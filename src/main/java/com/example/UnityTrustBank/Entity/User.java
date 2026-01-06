@@ -24,12 +24,10 @@ public class User {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	@Column(length = 2, nullable = false) 
-	@NotBlank(message="please enter email")
+	@Column(length = 100, nullable = false, unique = true)
 	private String email;
 	private String password;
 	private String mobile;
-	private String age;
 	private boolean active;
 	@ManyToOne
 	private Role role;

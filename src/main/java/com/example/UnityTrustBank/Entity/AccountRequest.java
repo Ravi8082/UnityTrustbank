@@ -15,27 +15,33 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+@Entity
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Entity
 public class AccountRequest {
-	 @Id
-	    @GeneratedValue(strategy = GenerationType.IDENTITY)
-	    private Long id;
 
-	    private String accountType;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	    @Enumerated(EnumType.STRING)
-	    private Request status;
+    private String accountType;
 
-	    private LocalDateTime requestDate;
-	    private LocalDateTime approvedDate;
-	    @ManyToOne
-	    private User user;
-	    @ManyToOne
-	    private Branch branch;
-	    @ManyToOne
-	    private User approvedBy;
+    @Enumerated(EnumType.STRING)
+    private Request status;
 
+    private LocalDateTime requestDate;
+    private LocalDateTime approvedDate;
+
+    private String rejectionReason;
+
+    @ManyToOne
+    private User user;        // customer
+
+    @ManyToOne
+    private Branch branch;
+
+    @ManyToOne
+    private User approvedBy;  // manager
 }
+

@@ -1,13 +1,12 @@
-package com.example.UnityTrustBank.Entity;
+package com.example.UnityTrustBank.dto;
 
 import java.util.List;
 
+import com.example.UnityTrustBank.Entity.Account;
+import com.example.UnityTrustBank.Entity.AccountSequence;
+import com.example.UnityTrustBank.Entity.User;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import lombok.AllArgsConstructor;
@@ -16,18 +15,11 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Entity
-public class Branch {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
+public class BranchUpdateDto {
 	private Long id;
 	private String branchName;
-	private String branchCode;
-	private String ifscCode;
-	private String accountPrefix;
-	private String City;
-	private String state;
-	private boolean active;
+    private String city;
+    private String state;
 	
 	@OneToMany(mappedBy = "branch")
 	@JsonBackReference
@@ -40,4 +32,5 @@ public class Branch {
 	@OneToOne(mappedBy = "branch")
 	@JsonBackReference
 	private AccountSequence accountSequence;
-} 
+
+}
