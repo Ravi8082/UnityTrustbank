@@ -2,77 +2,143 @@ package com.example.UnityTrustBank.ServiceImple;
 
 import java.util.List;
 
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.UnityTrustBank.Entity.Branch;
+import com.example.UnityTrustBank.Enum.AccountStatus;
+import com.example.UnityTrustBank.Repository.AccountRepo;
 import com.example.UnityTrustBank.Repository.BranchRepo;
 import com.example.UnityTrustBank.Service.BranchService;
-import com.example.UnityTrustBank.dto.BranchDto;
-import com.example.UnityTrustBank.dto.BranchUpdateDto;
+import com.example.UnityTrustBank.dto.*;
+
 @Service
 public class BranchServiceImpl implements BranchService {
 
     @Autowired
     private BranchRepo branchRepo;
-
     @Autowired
-    private ModelMapper modelMapper;
+    private AccountRepo accountRepo;
 
     @Override
-    public BranchDto createBranch(BranchDto branchDto) {
+    @Transactional
+    public BranchResponseDto createBranch(BranchCreateDto dto) {
 
-        if (branchRepo.existsByIfscCode(branchDto.getIfscCode())) {
-            throw new RuntimeException("IFSC code already exists");
+        if (isBlank(dto.getBranchName())
+                || isBlank(dto.getBranchCode())
+                || isBlank(dto.getIfscCode())
+                || isBlank(dto.getAccountPrefix())
+                || isBlank(dto.getCity())
+                || isBlank(dto.getState())) {
+            throw new RuntimeException("All branch fields are mandatory");
         }
 
-        if (branchRepo.existsByAccountPrefix(branchDto.getAccountPrefix())) {
+        if (branchRepo.existsByBranchCode(dto.getBranchCode())) {
+            throw new RuntimeException("Branch code already exists");
+        }
+        if (branchRepo.existsByIfscCode(dto.getIfscCode())) {
+            throw new RuntimeException("IFSC already exists");
+        }
+        if (branchRepo.existsByAccountPrefix(dto.getAccountPrefix())) {
             throw new RuntimeException("Account prefix already exists");
         }
 
-        Branch branch = modelMapper.map(branchDto, Branch.class);
+        Branch branch = new Branch();
+        branch.setBranchName(dto.getBranchName().trim());
+        branch.setBranchCode(dto.getBranchCode().trim());
+        branch.setIfscCode(dto.getIfscCode().trim());
+        branch.setAccountPrefix(dto.getAccountPrefix().trim());
+        branch.setCity(dto.getCity().trim());
+        branch.setState(dto.getState().trim());
         branch.setActive(true);
 
-        Branch savedBranch = branchRepo.save(branch);
-        return modelMapper.map(savedBranch, BranchDto.class);
+        return toDto(branchRepo.save(branch));
     }
 
     @Override
-    public BranchDto getBranchById(Long id) {
+    @Transactional
+    public BranchResponseDto updateBranch(Long id, BranchUpdateDto dto) {
+
         Branch branch = branchRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Branch not found"));
-        return modelMapper.map(branch, BranchDto.class);
+
+        if (!branch.isActive()) {
+            throw new RuntimeException("Inactive branch cannot be updated");
+        }
+
+        if (isBlank(dto.getCity()) || isBlank(dto.getState())) {
+            throw new RuntimeException("City and State are required");
+        }
+
+        branch.setCity(dto.getCity().trim());
+        branch.setState(dto.getState().trim());
+
+        return toDto(branchRepo.save(branch));
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public BranchResponseDto getBranch(Long id) {
+
+        return toDto(
+            branchRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Branch not found"))
+        );
     }
 
     @Override
-    public List<BranchDto> getAllBranch() {
+    @Transactional(readOnly = true)
+    public List<BranchResponseDto> getAllBranches() {
+
         return branchRepo.findAll()
                 .stream()
-                .map(branch -> modelMapper.map(branch, BranchDto.class))
+                .map(this::toDto)
                 .toList();
     }
 
-    @Override
-    public BranchDto updateBranch(Long id, BranchUpdateDto dto) {
-
-        Branch branch = branchRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Branch not found"));
-
-        branch.setBranchName(dto.getBranchName());
-        branch.setCity(dto.getCity());
-        branch.setState(dto.getState());
-
-        Branch updated = branchRepo.save(branch);
-        return modelMapper.map(updated, BranchDto.class);
-    }
 
     @Override
+    @Transactional
     public void deactivateBranch(Long id) {
+
         Branch branch = branchRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Branch not found"));
+
+        if (!branch.isActive()) {
+            throw new RuntimeException("Branch already inactive");
+        }
+
+
+        long activeAccounts =
+            accountRepo.countByBranch_IdAndStatus(
+                id, AccountStatus.ACTIVE);
+
+        if (activeAccounts > 0) {
+            throw new RuntimeException(
+                "Cannot deactivate branch with active accounts");
+        }
 
         branch.setActive(false);
         branchRepo.save(branch);
+    }
+
+    private BranchResponseDto toDto(Branch b) {
+
+        return new BranchResponseDto(
+                b.getId(),
+                b.getBranchName(),
+                b.getBranchCode(),
+                b.getIfscCode(),
+                b.getAccountPrefix(),
+                b.getCity(),
+                b.getState(),
+                b.isActive()
+        );
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
     }
 }

@@ -2,22 +2,23 @@ package com.example.UnityTrustBank.Entity;
 
 import java.time.LocalDate;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import jakarta.persistence.*;
+import lombok.*;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 @Entity
+@Table(
+    name = "customer_profiles",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_cp_aadhaar", columnNames = "aadhaar"),
+        @UniqueConstraint(name = "uk_cp_pan", columnNames = "pan")
+    },
+    indexes = {
+        @Index(name = "idx_cp_user", columnList = "user_id")
+    }
+)
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class CustomerProfile {
 
     @Id
@@ -26,24 +27,32 @@ public class CustomerProfile {
 
     private String fullName;
     private String fatherName;
-
-    @Column(unique = true, length = 12)
-    private String aadhaar;
-
-    @Column(unique = true, length = 10)
-    private String pan;
-
     private String address;
     private LocalDate dob;
+    @Column(name = "profile_image_path")
+    private String profileImagePath;
+    @Column(name = "aadhaar_image_path")
+    private String aadhaarImagePath;
+
+    @Column(name = "pan_image_path")
+    private String panImagePath;
+
+
+    @Column(length = 12)
+    private String aadhaar;
+
+    @Column(length = 10)
+    private String pan;
 
     private boolean aadhaarVerified;
     private boolean panVerified;
 
     private boolean branchVisitRequired;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", unique = true)
-    @JsonBackReference
-    private User user;
+    @Version
+    private Long version;
 
+    @OneToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, updatable = false)
+    private User user;
 }

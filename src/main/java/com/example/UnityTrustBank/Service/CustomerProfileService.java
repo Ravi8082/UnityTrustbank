@@ -1,17 +1,19 @@
 package com.example.UnityTrustBank.Service;
 
-import com.example.UnityTrustBank.Entity.CustomerProfile;
-import com.example.UnityTrustBank.dto.CustomerProfileDto;
+import com.example.UnityTrustBank.dto.*;
 
 public interface CustomerProfileService {
 
-    CustomerProfile createProfile(Long userId, CustomerProfileDto dto);
+    CustomerProfileResponseDto createProfile(
+            Long userId,
+            CustomerProfileCreateDto dto
+    );
 
-    CustomerProfile updateDocuments(Long userId, String aadhaar, String pan);
+    CustomerProfileResponseDto getProfile(Long userId);
 
-    void verifyAadhaar(Long userId, Long managerId);
+    void updateDocuments(Long userId, String aadhaar, String pan);
 
-    void verifyPan(Long userId, Long managerId);
+    void verifyAadhaar(Long userId);
 
-    CustomerProfile getProfileByUser(Long userId);
+    void verifyPan(Long userId);
 }

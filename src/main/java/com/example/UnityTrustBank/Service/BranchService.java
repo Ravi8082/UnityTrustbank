@@ -2,18 +2,17 @@ package com.example.UnityTrustBank.Service;
 
 import java.util.List;
 
-import com.example.UnityTrustBank.dto.BranchDto;
-import com.example.UnityTrustBank.dto.BranchUpdateDto;
+import com.example.UnityTrustBank.dto.*;
 
 public interface BranchService {
-	BranchDto createBranch(BranchDto branchDto);
-	
-	BranchDto getBranchById(Long id);
-	
-	List<BranchDto> getAllBranch();
-	
-	void deactivateBranch(Long id);
 
-	BranchDto updateBranch(Long id, BranchUpdateDto branchUpdateDto);
+    BranchResponseDto createBranch(BranchCreateDto dto);
 
+    BranchResponseDto updateBranch(Long id, BranchUpdateDto dto);
+
+    BranchResponseDto getBranch(Long id);
+
+    List<BranchResponseDto> getAllBranches();
+
+    void deactivateBranch(Long id);
 }

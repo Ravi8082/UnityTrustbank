@@ -30,6 +30,8 @@ public class AtmRequest {
 
     private LocalDateTime requestDate;
     private LocalDateTime approvedDate;
+    @ManyToOne(optional = false)
+    private User requestedBy;
 
     @ManyToOne
     @JoinColumn(name = "account_id")
@@ -38,4 +40,6 @@ public class AtmRequest {
 
     @ManyToOne
     private User approvedBy;
+    private String rejectionReason;
+	
 }

@@ -4,7 +4,9 @@ import java.time.LocalDate;
 import java.time.Period;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.UnityTrustBank.Entity.CustomerProfile;
 import com.example.UnityTrustBank.Entity.User;
@@ -12,122 +14,155 @@ import com.example.UnityTrustBank.Enum.AppRole;
 import com.example.UnityTrustBank.Repository.CustomerProfileRepo;
 import com.example.UnityTrustBank.Repository.UserRepo;
 import com.example.UnityTrustBank.Service.CustomerProfileService;
-import com.example.UnityTrustBank.dto.CustomerProfileDto;
+import com.example.UnityTrustBank.dto.*;
 
 @Service
-public class CustomerProfileServiceImpl implements CustomerProfileService {
+public class CustomerProfileServiceImpl
+        implements CustomerProfileService {
 
-    @Autowired
-    private UserRepo userRepo;
+    @Autowired private UserRepo userRepo;
+    @Autowired private CustomerProfileRepo profileRepo;
 
-    @Autowired
-    private CustomerProfileRepo customerProfileRepo;
-
-    // ================= CREATE PROFILE =================
     @Override
-    public CustomerProfile createProfile(Long userId, CustomerProfileDto dto) {
+    @Transactional
+    public CustomerProfileResponseDto createProfile(
+            Long userId,
+            CustomerProfileCreateDto dto) {
 
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User current = getCurrentUser();
 
-        if (user.getCustomerProfile() != null) {
+        if (!current.getId().equals(userId)) {
+            throw new RuntimeException("Unauthorized profile creation");
+        }
+
+        if (dto.getDob() == null || Period.between(dto.getDob(), LocalDate.now()).getYears() < 18) {
+        	throw new RuntimeException("Applicant must be 18+"); }
+        if (profileRepo.findByUser_Id(userId).isPresent()) {
             throw new RuntimeException("Customer profile already exists");
         }
 
-        if (dto.getDob() == null) {
-            throw new RuntimeException("DOB is mandatory");
-        }
-
         CustomerProfile profile = new CustomerProfile();
+        profile.setUser(current);
         profile.setFullName(dto.getFullName());
         profile.setFatherName(dto.getFatherName());
         profile.setAddress(dto.getAddress());
         profile.setDob(dto.getDob());
 
-        int age = Period.between(dto.getDob(), LocalDate.now()).getYears();
-        if (age < 18) {
-            profile.setBranchVisitRequired(true);
-        }
-
+        profile.setBranchVisitRequired(false);
         profile.setAadhaarVerified(false);
         profile.setPanVerified(false);
-        profile.setUser(user);
 
-        return customerProfileRepo.save(profile);
+        return toDto(profileRepo.save(profile));
     }
 
-    // ================= UPDATE DOCUMENTS =================
     @Override
-    public CustomerProfile updateDocuments(Long userId, String aadhaar, String pan) {
+    @Transactional(readOnly = true)
+    public CustomerProfileResponseDto getProfile(Long userId) {
 
-        CustomerProfile profile = getProfileByUser(userId);
+        User current = getCurrentUser();
+
+        if (!current.getId().equals(userId)
+                && current.getRole().getRoleName() != AppRole.ROLE_ADMIN) {
+            throw new RuntimeException("Unauthorized access");
+        }
+
+        CustomerProfile profile = profileRepo.findByUser_Id(userId)
+                .orElseThrow(() -> new RuntimeException("Profile not found"));
+
+        return toDto(profile);
+    }
+
+    @Override
+    @Transactional
+    public void updateDocuments(Long userId, String aadhaar, String pan) {
+
+        User current = getCurrentUser();
+
+        if (!current.getId().equals(userId)) {
+            throw new RuntimeException("Unauthorized document update");
+        }
+
+        CustomerProfile profile = profileRepo.findByUser_Id(userId)
+                .orElseThrow(() -> new RuntimeException("Profile not found"));
 
         if (profile.isAadhaarVerified() || profile.isPanVerified()) {
             throw new RuntimeException("Verified documents cannot be changed");
         }
 
+        if (aadhaar == null || aadhaar.length() != 12) {
+            throw new RuntimeException("Invalid Aadhaar number");
+        }
+
+        if (pan == null || pan.length() != 10) {
+            throw new RuntimeException("Invalid PAN number");
+        }
+
         profile.setAadhaar(aadhaar);
         profile.setPan(pan);
 
-        return customerProfileRepo.save(profile);
+        profileRepo.save(profile);
     }
 
-    // ================= VERIFY AADHAAR =================
     @Override
-    public void verifyAadhaar(Long userId, Long managerId) {
+    @Transactional
+    public void verifyAadhaar(Long userId) {
 
-        validateManager(managerId);
+        User admin = getCurrentAdmin();
 
-        CustomerProfile profile = getProfileByUser(userId);
-
-        if (profile.getAadhaar() == null) {
-            throw new RuntimeException("Aadhaar not submitted");
-        }
+        CustomerProfile profile = profileRepo.findByUser_Id(userId)
+                .orElseThrow(() -> new RuntimeException("Profile not found"));
 
         profile.setAadhaarVerified(true);
-        customerProfileRepo.save(profile);
+        profileRepo.save(profile);
     }
 
-    // ================= VERIFY PAN =================
     @Override
-    public void verifyPan(Long userId, Long managerId) {
+    @Transactional
+    public void verifyPan(Long userId) {
 
-        validateManager(managerId);
+        User admin = getCurrentAdmin();
 
-        CustomerProfile profile = getProfileByUser(userId);
-
-        if (profile.getPan() == null) {
-            throw new RuntimeException("PAN not submitted");
-        }
+        CustomerProfile profile = profileRepo.findByUser_Id(userId)
+                .orElseThrow(() -> new RuntimeException("Profile not found"));
 
         profile.setPanVerified(true);
-        customerProfileRepo.save(profile);
+        profileRepo.save(profile);
     }
 
-    // ================= GET PROFILE =================
-    @Override
-    public CustomerProfile getProfileByUser(Long userId) {
+    private User getCurrentUser() {
 
-        User user = userRepo.findById(userId)
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        return userRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
-        CustomerProfile profile = user.getCustomerProfile();
-        if (profile == null) {
-            throw new RuntimeException("Customer profile not found");
-        }
-        return profile;
     }
 
-    // ================= MANAGER VALIDATION =================
-    private User validateManager(Long managerId) {
+    private User getCurrentAdmin() {
 
-        User manager = userRepo.findById(managerId)
-                .orElseThrow(() -> new RuntimeException("Manager not found"));
+        User user = getCurrentUser();
 
-        if (manager.getRole() == null ||
-            manager.getRole().getRoleName() != AppRole.ROLE_ADMIN) {
-            throw new RuntimeException("Only manager can verify documents");
+        if (user.getRole().getRoleName() != AppRole.ROLE_ADMIN) {
+            throw new RuntimeException("Admin access required");
         }
-        return manager;
+        return user;
+    }
+
+    private CustomerProfileResponseDto toDto(CustomerProfile p) {
+
+        return new CustomerProfileResponseDto(
+                p.getId(),
+                p.getFullName(),
+                p.getFatherName(),
+                p.getAddress(),
+                p.getDob(),
+                p.getAadhaar(),
+                p.getPan(),
+                p.isAadhaarVerified(),
+                p.isPanVerified(),
+                p.isBranchVisitRequired()
+        );
     }
 }

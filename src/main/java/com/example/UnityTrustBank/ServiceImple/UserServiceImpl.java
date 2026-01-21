@@ -2,98 +2,74 @@ package com.example.UnityTrustBank.ServiceImple;
 
 import java.util.List;
 
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.example.UnityTrustBank.Entity.Role;
-import com.example.UnityTrustBank.Entity.User;
+import com.example.UnityTrustBank.Entity.*;
 import com.example.UnityTrustBank.Enum.AppRole;
-import com.example.UnityTrustBank.Repository.RoleRepo;
-import com.example.UnityTrustBank.Repository.UserRepo;
+import com.example.UnityTrustBank.Repository.*;
 import com.example.UnityTrustBank.Service.UserService;
-import com.example.UnityTrustBank.dto.UserDto;
+import com.example.UnityTrustBank.dto.*;
+
+import jakarta.transaction.Transactional;
+
 @Service
 public class UserServiceImpl implements UserService {
 
-    @Autowired
-    private UserRepo userRepo;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private RoleRepo roleRepo;
+    @Autowired private UserRepo userRepo;
+    @Autowired private RoleRepo roleRepo;
+    @Autowired private BranchRepo branchRepo;
+    
 
-    @Autowired
-    private ModelMapper modelMapper;
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    @Override
-    public UserDto createCustomer(UserDto userDto) {
-    	if(userRepo.findByEmail(userDto.getEmail())) {
-    		throw new RuntimeException("Emaily already Present");
-    	}
-
-        User user = modelMapper.map(userDto, User.class);
-        if(!user.getEmail().equals(userDto.getEmail())) {
-        	
-        }
-
-        Role role = roleRepo.findByRoleName(AppRole.ROLE_USER)
-                .orElseThrow(() -> new RuntimeException("ROLE_USER not found"));
-
-        user.setRole(role);
-        user.setActive(true);
-
-        User savedUser = userRepo.save(user);
-        return modelMapper.map(savedUser, UserDto.class);
+    UserServiceImpl(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
-    public UserDto createManager(UserDto userDto) {
-    	if(userRepo.findByEmail(userDto.getEmail())) {
-    		throw new RuntimeException("Emaily already Present");
-    	}
+    public UserResponseDto createManager(UserDto dto) {
 
-        User user = modelMapper.map(userDto, User.class);
+        if (userRepo.findByEmail(dto.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
 
         Role role = roleRepo.findByRoleName(AppRole.ROLE_ADMIN)
                 .orElseThrow(() -> new RuntimeException("ROLE_ADMIN not found"));
 
-        if (user.getBranch() == null) {
-            throw new RuntimeException("Manager must be assigned to a branch");
-        }
+        Branch branch = branchRepo.findById(dto.getBranchId())
+                .orElseThrow(() -> new RuntimeException("Branch not found"));
 
+        User user = new User();
+        user.setEmail(dto.getEmail());
+        user.setPassword(encoder.encode(dto.getPassword()));
+        user.setMobile(dto.getMobile());
         user.setRole(role);
+        user.setBranch(branch);
         user.setActive(true);
 
-        User savedUser = userRepo.save(user);
-        return modelMapper.map(savedUser, UserDto.class);
+        return toDto(userRepo.save(user));
     }
 
     @Override
-    public UserDto getUserById(Long id) {
-
-        User user = userRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        return modelMapper.map(user, UserDto.class);
+    public UserResponseDto getUser(Long id) {
+        return toDto(
+            userRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"))
+        );
     }
 
     @Override
-    public List<UserDto> getAllCustomer() {
+    public List<UserResponseDto> getAllCustomers() {
 
-        List<User> users = userRepo.findByRole_RoleName(AppRole.ROLE_USER);
-
-        return users.stream()
-                .map(user -> modelMapper.map(user, UserDto.class))
-                .toList();
-    }
-
-    @Override
-    public List<UserDto> getAllManagers() {
-
-        List<User> users = userRepo.findByRole_RoleName(AppRole.ROLE_ADMIN);
-
-        return users.stream()
-                .map(user -> modelMapper.map(user, UserDto.class))
+        return userRepo.findByRole_RoleName(AppRole.ROLE_USER)
+                .stream()
+                .map(this::toDto)
                 .toList();
     }
 
@@ -106,4 +82,53 @@ public class UserServiceImpl implements UserService {
         user.setActive(false);
         userRepo.save(user);
     }
+
+    private UserResponseDto toDto(User u) {
+        return new UserResponseDto(
+                u.getId(),
+                u.getEmail(),
+                u.getMobile(),
+                u.isActive(),
+                u.getRole().getRoleName().name()
+        );
+    }
+    @Transactional
+    @Override
+    public void resetPassword(PasswordResetDto dto) {
+
+        User user = getCurrentUser();
+
+        if (!user.isPasswordResetRequired()) {
+            throw new RuntimeException("Password reset not required");
+        }
+
+        if (!passwordEncoder.matches(
+                dto.getOldPassword(), user.getPassword())) {
+            throw new RuntimeException("Old password incorrect");
+        }
+
+        if (!dto.getNewPassword().equals(dto.getConfirmPassword())) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        if (dto.getNewPassword().length() < 8) {
+            throw new RuntimeException("Password too weak");
+        }
+
+        user.setPassword(
+            passwordEncoder.encode(dto.getNewPassword())
+        );
+        user.setPasswordResetRequired(false);
+
+        userRepo.save(user);
+    }
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext()
+                .getAuthentication().getName();
+
+        return userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+
 }

@@ -1,43 +1,49 @@
 package com.example.UnityTrustBank.Entity;
 
-import java.util.List;
+import jakarta.persistence.*;
+import lombok.*;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Entity
+@Table(
+    name = "branches",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_branch_code", columnNames = "branchCode"),
+        @UniqueConstraint(name = "uk_branch_ifsc", columnNames = "ifscCode"),
+        @UniqueConstraint(name = "uk_branch_prefix", columnNames = "accountPrefix")
+    },
+    indexes = {
+        @Index(name = "idx_branch_city", columnList = "city"),
+        @Index(name = "idx_branch_active", columnList = "active")
+    }
+)
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Branch {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
-	private String branchName;
-	private String branchCode;
-	private String ifscCode;
-	private String accountPrefix;
-	private String City;
-	private String state;
-	private boolean active;
-	
-	@OneToMany(mappedBy = "branch")
-	@JsonBackReference
-	private List<User> users;
 
-	@OneToMany(mappedBy = "branch")
-	@JsonBackReference
-	private List<Account> accounts;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	@OneToOne(mappedBy = "branch")
-	@JsonBackReference
-	private AccountSequence accountSequence;
-} 
+    // IMMUTABLE IDENTIFIERS
+    @Column(nullable = false, updatable = false)
+    private String branchName;
+
+    @Column(nullable = false, updatable = false)
+    private String branchCode;
+
+    @Column(nullable = false, updatable = false)
+    private String ifscCode;
+
+    @Column(nullable = false, updatable = false)
+    private String accountPrefix;
+
+    private String city;
+    private String state;
+
+    private boolean active;
+
+    // optimistic locking
+    @Version
+    private Long version;
+}

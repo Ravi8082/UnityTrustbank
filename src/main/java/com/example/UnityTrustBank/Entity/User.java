@@ -1,57 +1,64 @@
 package com.example.UnityTrustBank.Entity;
 
-import java.util.List;
+import jakarta.persistence.*;
+import lombok.*;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Entity
+@Table(
+    name = "users",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_user_email", columnNames = "email"),
+        @UniqueConstraint(name = "uk_user_mobile", columnNames = "mobile")
+    },
+    indexes = {
+        @Index(name = "idx_user_email", columnList = "email"),
+        @Index(name = "idx_user_role", columnList = "role_id")
+    }
+)
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 100, nullable = false, unique = true)
+    // JWT SUBJECT — NEVER UPDATE
+    @Column(nullable = false, length = 100, updatable = false)
     private String email;
 
     @Column(nullable = false)
     private String password;
+    @Column(nullable = false)
+    private boolean passwordResetRequired;
 
-    @Column(length = 15, unique = true)
+
+    @Column(length = 15)
     private String mobile;
 
     private boolean active;
 
-    @ManyToOne
+    // OPTIMISTIC LOCK
+    @Version
+    private Long version;
+
+    // ROLE
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
-    @ManyToOne
+
+    // BRANCH
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "branch_id", nullable = false)
     private Branch branch;
-    
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    @JsonManagedReference
+
+    // KYC (optional at creation)
+    @OneToOne(
+        mappedBy = "user",
+        cascade = CascadeType.PERSIST,
+        fetch = FetchType.LAZY
+    )
     private CustomerProfile customerProfile;
-
-
-    @OneToMany(mappedBy = "user")
-    private List<Account> accounts;
-
-    @OneToMany(mappedBy = "approvedBy")
-    private List<AccountRequest> approvedAccountRequests;
 }

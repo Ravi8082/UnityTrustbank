@@ -2,64 +2,63 @@ package com.example.UnityTrustBank.Controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import com.example.UnityTrustBank.Entity.CustomerProfile;
 import com.example.UnityTrustBank.Service.CustomerProfileService;
-import com.example.UnityTrustBank.dto.CustomerProfileDto;
+import com.example.UnityTrustBank.dto.CustomerProfileCreateDto;
+import com.example.UnityTrustBank.dto.CustomerProfileResponseDto;
 
+@CrossOrigin("http://localhost:5175/")
 @RestController
-@RequestMapping("/api/customer-profiles")
+@RequestMapping("/customer-profile")
 public class CustomerProfileController {
 
     @Autowired
-    private CustomerProfileService profileService;
+    private CustomerProfileService service;
 
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     @PostMapping("/user/{userId}")
-    public ResponseEntity<CustomerProfile> createProfile(
+    public ResponseEntity<CustomerProfileResponseDto> create(
             @PathVariable Long userId,
-            @RequestBody CustomerProfileDto customerProfileDto) {
+            @RequestBody CustomerProfileCreateDto dto) {
 
-        CustomerProfile profile =
-                profileService.createProfile(userId, customerProfileDto);
-        return ResponseEntity.ok(profile);
+        return ResponseEntity.ok(service.createProfile(userId, dto));
     }
+    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<CustomerProfileResponseDto> get(
+            @PathVariable Long userId) {
 
+        return ResponseEntity.ok(service.getProfile(userId));
+    }
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     @PutMapping("/user/{userId}/documents")
-    public ResponseEntity<CustomerProfile> updateDocuments(
+    public ResponseEntity<String> updateDocs(
             @PathVariable Long userId,
             @RequestParam String aadhaar,
             @RequestParam String pan) {
 
-        CustomerProfile profile =
-                profileService.updateDocuments(userId, aadhaar, pan);
-        return ResponseEntity.ok(profile);
+        service.updateDocuments(userId, aadhaar, pan);
+        return ResponseEntity.ok("Documents updated");
     }
 
+    // MANAGER verifies
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @PutMapping("/user/{userId}/verify-aadhaar")
     public ResponseEntity<String> verifyAadhaar(
-            @PathVariable Long userId,
-            @RequestParam Long managerId) {
-
-        profileService.verifyAadhaar(userId, managerId);
-        return ResponseEntity.ok("Aadhaar verified successfully");
-    }
-
-    @PutMapping("/user/{userId}/verify-pan")
-    public ResponseEntity<String> verifyPan(
-            @PathVariable Long userId,
-            @RequestParam Long managerId) {
-
-        profileService.verifyPan(userId, managerId);
-        return ResponseEntity.ok("PAN verified successfully");
-    }
-
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<CustomerProfile> getProfile(
             @PathVariable Long userId) {
 
-        CustomerProfile profile =
-                profileService.getProfileByUser(userId);
-        return ResponseEntity.ok(profile);
+        service.verifyAadhaar(userId);
+        return ResponseEntity.ok("Aadhaar verified");
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PutMapping("/user/{userId}/verify-pan")
+    public ResponseEntity<String> verifyPan(
+            @PathVariable Long userId) {
+
+        service.verifyPan(userId);
+        return ResponseEntity.ok("PAN verified");
     }
 }

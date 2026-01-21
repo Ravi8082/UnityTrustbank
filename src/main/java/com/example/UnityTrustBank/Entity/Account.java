@@ -1,54 +1,61 @@
 package com.example.UnityTrustBank.Entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.util.List;
+import com.example.UnityTrustBank.Enum.AccountStatus;
 
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
-@Data
-@AllArgsConstructor
+@Table(
+    name = "accounts",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_account_number", columnNames = "account_number")
+    },
+    indexes = {
+        @Index(name = "idx_account_user", columnList = "user_id"),
+        @Index(name = "idx_account_branch", columnList = "branch_id"),
+        @Index(name = "idx_account_status", columnList = "status")
+    }
+)
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class Account {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(name = "account_number", nullable = false, updatable = false, unique = true, length = 20)
     private String accountNumber;
 
-    private Double balance;
-    private String status;
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal balance;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AccountStatus status;
+
+    @Column(nullable = false, updatable = false)
     private LocalDateTime openedAt;
 
-    @ManyToOne
+    @Version
+    private Long version;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "branch_id")
     private Branch branch;
 
-    @OneToMany(mappedBy = "account", cascade = CascadeType.ALL)
-    private List<Transaction> transactions;
-
-    @OneToMany(mappedBy = "account", cascade = CascadeType.ALL)
-    private List<Loan> loans;
-
-    @OneToMany(mappedBy = "account", cascade = CascadeType.ALL)
-    private List<AtmRequest> atmRequests;
-
-    @OneToOne(mappedBy = "account", cascade = CascadeType.ALL)
-    private AtmCard atmCard;
+    @PrePersist
+    protected void onCreate() {
+        this.openedAt = LocalDateTime.now();
+    }
 }

@@ -1,8 +1,12 @@
 package com.example.UnityTrustBank.Entity;
 
+
+
 import java.time.LocalDateTime;
 
-import com.example.UnityTrustBank.Enum.Request;
+import com.example.UnityTrustBank.Enum.UpiTxnStatus;
+
+import com.example.UnityTrustBank.Enum.UpiTxnStatus;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,7 +14,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,29 +22,20 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AccountRequest {
+public class UpiTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String accountType;
+    private String referenceNo;
+
+    private String fromVpa;
+    private String toVpa;
+    private Double amount;
 
     @Enumerated(EnumType.STRING)
-    private Request status;
+    private UpiTxnStatus status;
 
-    private LocalDateTime requestDate;
-    private LocalDateTime approvedDate;
-
-    private String rejectionReason;
-
-    @ManyToOne
-    private User user;        // customer
-
-    @ManyToOne
-    private Branch branch;
-
-    @ManyToOne
-    private User approvedBy;  // manager
+    private LocalDateTime createdAt;
 }
-

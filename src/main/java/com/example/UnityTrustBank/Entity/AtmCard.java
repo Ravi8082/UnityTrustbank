@@ -2,37 +2,63 @@ package com.example.UnityTrustBank.Entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
+import com.example.UnityTrustBank.Enum.AtmStatus;
 
+import jakarta.persistence.*;
+import lombok.*;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 @Entity
+@Table(
+    name = "atm_cards",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_atm_card_number", columnNames = "card_number")
+    }
+)
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class AtmCard {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "card_number", nullable = false, updatable = false, length = 16)
     private String cardNumber;
+
+    @Column(nullable = false)
+    private String pinHash;
+
+    @Column(nullable = false)
+    private String cvvHash;
+
+    @Column(nullable = false)
     private LocalDate expiryDate;
-    private String status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AtmStatus status;
+
+    @Column(nullable = false)
+    private int failedPinAttempts;
+
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal dailyWithdrawalLimit;
+
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal dailyWithdrawnAmount;
+
+    private LocalDate lastWithdrawalDate;
+
+    @Column(nullable = false)
     private LocalDateTime issuedAt;
 
-    @OneToOne
-    @JoinColumn(name = "account_id", unique = true)
+    @Version
+    private Long version;
+
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "account_id", nullable = false, unique = true)
     private Account account;
-
 }
-
-

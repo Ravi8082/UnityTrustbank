@@ -1,8 +1,10 @@
 package com.example.UnityTrustBank.Entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.example.UnityTrustBank.Enum.Request;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,7 +27,7 @@ public class LoanRequest {
     private Long id;
 
     private String loanType;
-    private Double amount;
+    private BigDecimal amount;
     private Integer tenureMonths;
 
     @Enumerated(EnumType.STRING)
@@ -35,12 +37,20 @@ public class LoanRequest {
     private LocalDateTime approvedAt;
 
     @ManyToOne
+    @JsonIgnoreProperties({
+        "loanRequests", "accounts", "customerProfile", "branch"
+    })
     private User user;
 
     @ManyToOne
+    @JsonIgnoreProperties({
+        "users", "accounts", "accountSequence"
+    })
     private Branch branch;
 
-
     @ManyToOne
+    @JsonIgnoreProperties({
+        "loanRequests", "accounts", "customerProfile", "branch"
+    })
     private User approvedBy;
 }

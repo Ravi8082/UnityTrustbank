@@ -2,19 +2,18 @@ package com.example.UnityTrustBank.Service;
 
 import java.util.List;
 
-
+import com.example.UnityTrustBank.dto.PasswordResetDto;
 import com.example.UnityTrustBank.dto.UserDto;
+import com.example.UnityTrustBank.dto.UserResponseDto;
+
 public interface UserService {
-	
-    UserDto createCustomer(UserDto user);
 
-    UserDto createManager(UserDto user);
+    UserResponseDto createManager(UserDto dto);
 
-    UserDto getUserById(Long id);
+    UserResponseDto getUser(Long id);
 
-    List<UserDto> getAllCustomer();
-
-    List<UserDto> getAllManagers();
+    List<UserResponseDto> getAllCustomers();
 
     void deactivateUser(Long userId);
+    void resetPassword(PasswordResetDto dto);
 }

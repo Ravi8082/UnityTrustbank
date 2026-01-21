@@ -1,13 +1,10 @@
 package com.example.UnityTrustBank.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @AllArgsConstructor
-@NoArgsConstructor
-public class BranchDto {
+public class BranchResponseDto {
 
     private Long id;
     private String branchName;
@@ -16,5 +13,5 @@ public class BranchDto {
     private String accountPrefix;
     private String city;
     private String state;
-    private Boolean active;
+    private boolean active;
 }
