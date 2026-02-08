@@ -36,6 +36,8 @@ public class SecurityConfig {
             .sessionManagement(sm ->
                 sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/health").permitAll()
+            .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**",
                         "/account-applications/apply",
                         "/account-applications/{id}/upload-kyc",
