@@ -27,6 +27,7 @@ public class CustomerProfile {
 
     private String fullName;
     private String fatherName;
+    private String gender;  // MALE/FEMALE
     private String address;
     private LocalDate dob;
     @Column(name = "profile_image_path")

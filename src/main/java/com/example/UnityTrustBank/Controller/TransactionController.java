@@ -12,7 +12,6 @@ import com.example.UnityTrustBank.dto.TransactionResponseDto;
 
 @RestController
 @RequestMapping("/transactions")
-@CrossOrigin("http://localhost:5175/")
 public class TransactionController {
 
     @Autowired

@@ -60,4 +60,8 @@ public class EmiSchedule {
 
     @Column(name = "failure_count", nullable = false)
     private Integer failureCount = 0;
+    
+    private LocalDateTime paidAt;
+    private BigDecimal paidAmount;
+
 }

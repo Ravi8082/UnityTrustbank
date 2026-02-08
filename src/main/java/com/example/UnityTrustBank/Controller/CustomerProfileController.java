@@ -9,7 +9,6 @@ import com.example.UnityTrustBank.Service.CustomerProfileService;
 import com.example.UnityTrustBank.dto.CustomerProfileCreateDto;
 import com.example.UnityTrustBank.dto.CustomerProfileResponseDto;
 
-@CrossOrigin("http://localhost:5175/")
 @RestController
 @RequestMapping("/customer-profile")
 public class CustomerProfileController {

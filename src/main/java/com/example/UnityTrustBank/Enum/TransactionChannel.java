@@ -4,5 +4,7 @@ public enum TransactionChannel {
     ATM,
     CASH,
     TRANSFER,
-    UPI, LOAN
+    UPI, 
+    LOAN,
+    INTERNAL
 }

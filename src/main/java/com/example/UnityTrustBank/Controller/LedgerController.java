@@ -12,7 +12,6 @@ import com.example.UnityTrustBank.Repository.LedgerRepo;
 
 @RestController
 @RequestMapping("/ledger")
-@CrossOrigin("http://localhost:5175/")
 public class LedgerController {
 
     @Autowired

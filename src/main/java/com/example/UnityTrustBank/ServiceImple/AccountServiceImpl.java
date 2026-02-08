@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.UnityTrustBank.exception.ResourceNotFoundException;
+import com.example.UnityTrustBank.exception.UnauthorizedAccessException;
 
 import com.example.UnityTrustBank.Entity.Account;
 import com.example.UnityTrustBank.Entity.User;
@@ -35,13 +37,14 @@ public class AccountServiceImpl implements AccountService {
     public AccountResponseDto getAccount(Long accountId) {
 
         Account account = accountRepo.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + accountId));
 
         User current = getCurrentUser();
 
         if (!account.getUser().getId().equals(current.getId())
-                && current.getRole().getRoleName() != AppRole.ROLE_ADMIN) {
-            throw new RuntimeException("Unauthorized account access");
+                && current.getRole().getRoleName() != AppRole.ROLE_ADMIN
+                && current.getRole().getRoleName() != AppRole.ROLE_MANAGER) {
+            throw new UnauthorizedAccessException("Access Denied: You cannot view other customers' accounts.");
         }
 
         return toDto(account);
@@ -53,7 +56,8 @@ public class AccountServiceImpl implements AccountService {
         User current = getCurrentUser();
 
         if (!current.getId().equals(userId)
-                && current.getRole().getRoleName() != AppRole.ROLE_ADMIN) {
+                && current.getRole().getRoleName() != AppRole.ROLE_ADMIN
+                && current.getRole().getRoleName() != AppRole.ROLE_MANAGER) {
             throw new RuntimeException("Unauthorized access");
         }
 
@@ -72,14 +76,13 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepo.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
-        if (!account.getBranch().getId()
-                .equals(admin.getBranch().getId())) {
-            throw new RuntimeException("Unauthorized branch access");
+        if (!account.getBranch().getId().equals(admin.getBranch().getId())) {
+            throw new RuntimeException("Unauthorized: Admin can only manage accounts in their branch.");
         }
+
         if (!account.getBranch().isActive()) {
             throw new RuntimeException("Branch inactive");
         }
-
 
         if (account.getStatus() == AccountStatus.FROZEN) {
             throw new RuntimeException("Account already frozen");
@@ -103,10 +106,10 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepo.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
-        if (!account.getBranch().getId()
-                .equals(admin.getBranch().getId())) {
-            throw new RuntimeException("Unauthorized branch access");
+        if (!account.getBranch().getId().equals(admin.getBranch().getId())) {
+            throw new RuntimeException("Unauthorized: Admin can only manage accounts in their branch.");
         }
+
         if (!account.getBranch().isActive()) {
             throw new RuntimeException("Branch inactive");
         }
@@ -134,7 +137,7 @@ public class AccountServiceImpl implements AccountService {
 
         User user = getCurrentUser();
 
-        if (user.getRole().getRoleName() != AppRole.ROLE_ADMIN) {
+        if (user.getRole().getRoleName() != AppRole.ROLE_ADMIN && user.getRole().getRoleName() != AppRole.ROLE_MANAGER) {
             throw new RuntimeException("Admin access required");
         }
         return user;
@@ -148,17 +151,22 @@ public class AccountServiceImpl implements AccountService {
                 a.getStatus()
         );
     }
-    @Override
+       @Override
     @Transactional
     public void closeAccount(Long accountId) {
+
+        User admin = getCurrentAdmin(); // Security Check
 
         Account account = accountRepo.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
+        if (!account.getBranch().getId().equals(admin.getBranch().getId())) {
+            throw new RuntimeException("Unauthorized: Admin can only close accounts in their branch.");
+        }
+
         if (account.getBalance().compareTo(BigDecimal.ZERO) != 0) {
             throw new RuntimeException("Withdraw full balance before closing");
         }
-
         upiRepo.findByAccount_Id(accountId)
                 .ifPresent(upi -> upi.setStatus(UpiStatus.INACTIVE));
 
@@ -168,4 +176,17 @@ public class AccountServiceImpl implements AccountService {
         account.setStatus(AccountStatus.CLOSED);
         accountRepo.save(account);
     }
+       @Override
+       public List<AccountResponseDto> getAccountsForBranch() {
+
+           User admin = getCurrentAdmin(); // only admin/manager
+
+           Long branchId = admin.getBranch().getId();
+
+           return accountRepo.findByBranch_Id(branchId)
+                   .stream()
+                   .map(this::toDto)
+                   .toList();
+       }
+
 }

@@ -15,6 +15,9 @@ import com.example.UnityTrustBank.Entity.*;
 import com.example.UnityTrustBank.Enum.*;
 import com.example.UnityTrustBank.Repository.*;
 import com.example.UnityTrustBank.Service.UpiService;
+import com.example.UnityTrustBank.exception.InsufficientBalanceException;
+import com.example.UnityTrustBank.exception.ResourceNotFoundException;
+import com.example.UnityTrustBank.exception.UnauthorizedAccessException;
 
 @Service
 @Transactional
@@ -45,16 +48,16 @@ public class UpiServiceImpl implements UpiService {
         if (upiRepo.existsByVpa(vpa))
             throw new RuntimeException("VPA already exists");
 
-        Account account = accountRepo.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+         Account account = accountRepo.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with ID: " + accountId));
 
         User current = getCurrentUser();
 
         if (!account.getUser().getId().equals(current.getId()))
-            throw new RuntimeException("Unauthorized account access");
+            throw new UnauthorizedAccessException("Unauthorized: You can only link UPI to your own account");
 
         if (account.getStatus() != AccountStatus.ACTIVE)
-            throw new RuntimeException("Account not active");
+            throw new RuntimeException("Account is not active. Current Status: " + account.getStatus());
 
         if (upiRepo.existsByAccount_Id(accountId))
             throw new RuntimeException("UPI already linked with this account");
@@ -92,37 +95,32 @@ public class UpiServiceImpl implements UpiService {
         if (fromVpa.equals(toVpa))
             throw new RuntimeException("Self transfer not allowed");
 
-        UpiAccount sender = upiRepo.findByVpa(fromVpa)
-                .orElseThrow(() -> new RuntimeException("Sender UPI not found"));
+         UpiAccount sender = upiRepo.findByVpa(fromVpa)
+                .orElseThrow(() -> new ResourceNotFoundException("Sender VPA not found: " + fromVpa));
 
         UpiAccount receiver = upiRepo.findByVpa(toVpa)
-                .orElseThrow(() -> new RuntimeException("Receiver UPI not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Receiver VPA not found: " + toVpa));
 
         User current = getCurrentUser();
 
         if (!sender.getAccount().getUser().getId().equals(current.getId()))
-            throw new RuntimeException("Unauthorized UPI access");
+            throw new UnauthorizedAccessException("Unauthorized UPI access");
 
         if (!passwordEncoder.matches(pin, sender.getPinHash()))
-            throw new RuntimeException("Invalid UPI PIN");
+            throw new UnauthorizedAccessException("Invalid UPI PIN");
 
-        // Lock accounts
         Account from = accountRepo.findByIdForUpdate(sender.getAccount().getId())
-                .orElseThrow(() -> new RuntimeException("Sender account missing"));
+                .orElseThrow(() -> new ResourceNotFoundException("Sender account missing from system"));
 
         Account to = accountRepo.findByIdForUpdate(receiver.getAccount().getId())
-                .orElseThrow(() -> new RuntimeException("Receiver account missing"));
+                .orElseThrow(() -> new ResourceNotFoundException("Receiver account missing from system"));
 
         if (from.getStatus() != AccountStatus.ACTIVE)
-            throw new RuntimeException("Sender account not active");
-
-        if (to.getStatus() != AccountStatus.ACTIVE)
-            throw new RuntimeException("Receiver account not active");
+            throw new RuntimeException("Sender account is not fully active. (Status: " + from.getStatus() + ")");
 
         if (from.getBalance().compareTo(amount) < 0)
-            throw new RuntimeException("Insufficient balance");
+            throw new InsufficientBalanceException("Insufficient funds for this transaction");
 
-        // Daily limit check
         UpiUsage usage = upiUsageRepo.findByUserIdAndDate(current.getId(), LocalDate.now())
                 .orElseGet(() -> {
                     UpiUsage u = new UpiUsage();
@@ -137,7 +135,6 @@ public class UpiServiceImpl implements UpiService {
 
         String ref = UUID.randomUUID().toString();
 
-        // Ledger entry
         BigDecimal senderNewBalance = ledgerService.postEntry(from, TransactionType.DEBIT, amount,
                 "UPI", "UPI to " + toVpa, ref);
 

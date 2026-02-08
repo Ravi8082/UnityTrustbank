@@ -36,8 +36,11 @@ public class Account {
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal balance;
 
+    @Column(name = "account_type", nullable = false)
+    private String accountType;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 25)
     private AccountStatus status;
 
     @Column(nullable = false, updatable = false)
@@ -53,6 +56,9 @@ public class Account {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "branch_id")
     private Branch branch;
+    @OneToOne(mappedBy = "account", cascade = CascadeType.ALL)
+    private AtmCard atmCard;
+
 
     @PrePersist
     protected void onCreate() {

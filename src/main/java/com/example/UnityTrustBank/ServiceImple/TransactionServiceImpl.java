@@ -69,7 +69,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
 
 
-        if (current.getRole().getRoleName() == AppRole.ROLE_ADMIN) {
+        if (current.getRole().getRoleName() == AppRole.ROLE_ADMIN || current.getRole().getRoleName() == AppRole.ROLE_MANAGER) {
 
             if (!account.getBranch().getId()
                     .equals(current.getBranch().getId())) {

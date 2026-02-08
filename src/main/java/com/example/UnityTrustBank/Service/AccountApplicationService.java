@@ -22,7 +22,16 @@ public interface AccountApplicationService {
 
     List<AccountApplicationResponseDto> pendingForManager();
 
+    List<AccountApplicationResponseDto> pendingForBranch(Long branchId);
+
     void approve(Long applicationId);
 
     void reject(Long applicationId, String reason);
+
+    AccountApplicationResponseDto getApplicationById(Long id);
+
+    // NEW - missing in your interface
+    List<AccountApplicationResponseDto> getAllApplicationsForManager();
+
+    List<AccountApplicationResponseDto> getAllApplicationsForBranch(Long branchId);
 }

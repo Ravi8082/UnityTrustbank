@@ -22,4 +22,6 @@ public class AtmPinHistory {
 
     private Long cardId;
     private LocalDateTime changedAt;
+    private Long changedBy;
+
 }

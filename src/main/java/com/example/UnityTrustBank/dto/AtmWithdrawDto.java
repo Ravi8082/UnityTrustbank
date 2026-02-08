@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 public class AtmWithdrawDto {
 
-    private Long cardId;
+    private String cardNumber;   // 👈 instead of cardId
     private String pin;
     private BigDecimal amount;
 }

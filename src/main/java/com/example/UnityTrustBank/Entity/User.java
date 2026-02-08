@@ -1,5 +1,7 @@
 package com.example.UnityTrustBank.Entity;
 
+import java.util.List;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -61,4 +63,8 @@ public class User {
         fetch = FetchType.LAZY
     )
     private CustomerProfile customerProfile;
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private List<Account> accounts;
+
+
 }

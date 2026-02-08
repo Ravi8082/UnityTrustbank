@@ -72,4 +72,25 @@ public class LedgerService {
 
         return newBalance;
     }
+    
+    /**
+     * Record a transaction in the ledger
+     */
+    public void recordTransaction(Long transactionId, Long accountId, String channel, BigDecimal amount, String description) {
+        Account account = accountRepo.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+                
+        // Create a ledger entry for the transaction
+        LedgerEntry entry = new LedgerEntry();
+        entry.setAccount(account);
+        entry.setType(TransactionType.CREDIT); // For interest, it's always credit
+        entry.setAmount(amount);
+        entry.setRunningBalance(account.getBalance()); // Use current balance
+        entry.setReferenceNo("TXN_" + transactionId); // Create reference number
+        entry.setChannel(channel);
+        entry.setRemark(description);
+        entry.setCreatedAt(LocalDateTime.now());
+        
+        ledgerRepo.save(entry);
+    }
 }

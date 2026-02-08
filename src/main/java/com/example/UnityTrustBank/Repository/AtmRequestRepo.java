@@ -14,8 +14,10 @@ public interface AtmRequestRepo extends JpaRepository<AtmRequest, Long> {
 
 	
 	List<AtmRequest> findByStatus(Request status);
-	List<AtmRequest> countByStatus(Request pending);
+	Long countByStatus(Request pending);
 	
 	Optional<User> findByAccount_Branch_IdAndStatus(Long branchId, Request pending);
+	
+	List<AtmRequest> findByRequestedBy_IdAndStatus(Long userId, Request status);
 
 }

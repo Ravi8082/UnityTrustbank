@@ -10,8 +10,7 @@ import com.example.UnityTrustBank.Entity.User;
 import com.example.UnityTrustBank.Repository.UserRepo;
 
 @Service
-public class CustomUserDetailsService
-        implements UserDetailsService {
+public class CustomUserDetailsService implements UserDetailsService {
 
     @Autowired
     private UserRepo userRepo;
@@ -23,23 +22,20 @@ public class CustomUserDetailsService
         System.out.println("LOAD USER: " + email);
 
         User user = userRepo.findByEmail(email)
-            .orElseThrow(() ->
-                new UsernameNotFoundException("User not found"));
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("User not found"));
 
-        System.out.println("ROLE = " + user.getRole().getRoleName());
+        // ✅ IMPORTANT FIX HERE
+        String role = user.getRole().getRoleName().name();
+
+        System.out.println("ROLE = " + role);
         System.out.println("ACTIVE = " + user.isActive());
-        System.out.println("Password="+user.getPassword());
 
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
                 .password(user.getPassword())
-                .authorities(user.getRole().getRoleName().name())
+                .authorities(role)
                 .disabled(!user.isActive())
                 .build();
     }
-
-	public String getAuthorities() {
-		// TODO Auto-generated method stub
-		return null;
-	}
 }

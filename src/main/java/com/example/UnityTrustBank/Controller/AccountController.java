@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.UnityTrustBank.Service.AccountService;
 import com.example.UnityTrustBank.dto.AccountResponseDto;
-@CrossOrigin("http://localhost:5175/")
+
 @RestController
 @RequestMapping("/accounts")
 public class AccountController {
@@ -60,5 +60,15 @@ public class AccountController {
         service.closeAccount(id);
         return ResponseEntity.ok("Account closed");
     }
+    
+    @PreAuthorize("hasAuthority('ROLE_ADMIN') or hasAuthority('ROLE_MANAGER')")
+    @GetMapping("/branch")
+    public ResponseEntity<List<AccountResponseDto>> getBranchAccounts() {
+
+        return ResponseEntity.ok(
+            service.getAccountsForBranch()
+        );
+    }
+
 
 }

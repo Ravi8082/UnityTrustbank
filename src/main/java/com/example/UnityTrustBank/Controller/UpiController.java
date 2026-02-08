@@ -21,7 +21,6 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 
 @RestController
 @RequestMapping("/upi")
-@CrossOrigin("http://localhost:5175/")
 public class UpiController {
 
     @Autowired

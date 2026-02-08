@@ -15,4 +15,6 @@ public interface AccountService {
     void unfreezeAccount(Long accountId);
     
     void closeAccount(Long accountId);
+    List<AccountResponseDto> getAccountsForBranch();
+
 }

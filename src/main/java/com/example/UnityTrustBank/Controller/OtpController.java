@@ -10,7 +10,6 @@ import com.example.UnityTrustBank.ServiceImple.EmailService;
 import com.example.UnityTrustBank.dto.OtpStore;
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin("http://localhost:5175/")
 public class OtpController {
 
     @Autowired

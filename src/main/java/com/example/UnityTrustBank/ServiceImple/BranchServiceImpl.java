@@ -1,11 +1,13 @@
 package com.example.UnityTrustBank.ServiceImple;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.UnityTrustBank.Entity.Account;
 import com.example.UnityTrustBank.Entity.Branch;
 import com.example.UnityTrustBank.Enum.AccountStatus;
 import com.example.UnityTrustBank.Repository.AccountRepo;
@@ -116,8 +118,10 @@ public class BranchServiceImpl implements BranchService {
                 id, AccountStatus.ACTIVE);
 
         if (activeAccounts > 0) {
-            throw new RuntimeException(
-                "Cannot deactivate branch with active accounts");
+        	throw new IllegalStateException(
+        			   "This branch has active accounts. Please close them first."
+        			);
+
         }
 
         branch.setActive(false);
@@ -141,4 +145,44 @@ public class BranchServiceImpl implements BranchService {
     private boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
     }
+
+    @Override
+    @Transactional
+    public void migrateBranch(Long sourceBranchId, Long targetBranchId) {
+        if (sourceBranchId.equals(targetBranchId)) {
+            throw new RuntimeException("Source and target branch cannot be the same");
+        }
+
+        Branch source = branchRepo.findById(sourceBranchId)
+                .orElseThrow(() -> new RuntimeException("Source branch not found"));
+        
+        Branch target = branchRepo.findById(targetBranchId)
+                .orElseThrow(() -> new RuntimeException("Target branch not found"));
+
+        if (!target.isActive()) {
+            throw new RuntimeException("Target branch is inactive");
+        }
+
+        List<Account> accounts = accountRepo.findByBranch_Id(sourceBranchId);
+        
+        if (accounts.isEmpty()) {
+            throw new RuntimeException("No accounts found in source branch to migrate");
+        }
+
+        for (Account account : accounts) {
+            account.setBranch(target);
+            // Note: In real scenarios, you might also want to update the IFSC code 
+            // if it's stored at the account level, or notify the user.
+        }
+
+        accountRepo.saveAll(accounts);
+    }
+    @Override
+    public List<BranchResponseDto> getActiveBranches() {
+        return branchRepo.findByActiveTrue()
+            .stream()
+            .map(this::toDto)  // Changed from toResponseDto to toDto
+            .collect(Collectors.toList());
+    }
+
 }

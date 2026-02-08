@@ -5,11 +5,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.List;
-import com.example.UnityTrustBank.dto.OtpStore;
-
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,10 +19,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.UnityTrustBank.Entity.*;
 import com.example.UnityTrustBank.Enum.*;
 import com.example.UnityTrustBank.Repository.*;
-import com.example.UnityTrustBank.Service.AccountApplicationService;
-import com.example.UnityTrustBank.Service.AccountSequenceService;
-import com.example.UnityTrustBank.Service.FileService;
+import com.example.UnityTrustBank.Service.*;
 import com.example.UnityTrustBank.dto.*;
+
 @Service
 public class AccountApplicationServiceImpl
         implements AccountApplicationService {
@@ -46,7 +45,8 @@ public class AccountApplicationServiceImpl
     	if (!OtpStore.isVerified(dto.getEmail())) {
             throw new RuntimeException("Email not verified");
         }
-    	OtpStore.clear(dto.getEmail());
+        // Don't clear verified status - it's needed for application processing
+        // OtpStore.clear(dto.getEmail()); // REMOVED
 
         if (dto.getDob() == null ||
             Period.between(dto.getDob(), LocalDate.now()).getYears() < 18) {
@@ -64,6 +64,15 @@ public class AccountApplicationServiceImpl
 
         if (appRepo.existsByPan(dto.getPan()))
             throw new RuntimeException("PAN already exists");
+         if (appRepo.existsByAadhaarAndStatusIn(dto.getAadhaar(), 
+                List.of(ApplicationStatus.SUBMITTED, ApplicationStatus.APPROVED))) {
+            throw new RuntimeException("An active application or account already exists with this Aadhaar.");
+        }
+
+        if (appRepo.existsByMobileAndStatusIn(dto.getMobile(), 
+                List.of(ApplicationStatus.SUBMITTED, ApplicationStatus.APPROVED))) {
+            throw new RuntimeException("Mobile number already in use for an active application.");
+        }
 
         Branch branch = branchRepo.findById(dto.getBranchId())
                 .filter(Branch::isActive)
@@ -146,10 +155,22 @@ public class AccountApplicationServiceImpl
         if (app.getStatus() != ApplicationStatus.SUBMITTED)
             throw new RuntimeException("Application already processed");
 
-        if (!admin.getBranch().getId().equals(app.getBranch().getId()))
-            throw new RuntimeException("Unauthorized branch access");
+        // Admin can only approve applications from their own branch
+        // Manager can approve applications from any branch
+        if (admin.getRole().getRoleName() == AppRole.ROLE_ADMIN) {
+            if (!admin.getBranch().getId().equals(app.getBranch().getId())) {
+                throw new RuntimeException("Unauthorized branch access");
+            }
+        }
+        // Check if user with same mobile already exists
+        if (userRepo.existsByMobile(app.getMobile())) {
+            throw new RuntimeException("A user with mobile number " + app.getMobile() + " already exists");
+        }
         
         String tempPassword = "UTB@" + (int)(Math.random()*9000 + 1000);
+        
+        
+        
         User user = userRepo.findByEmail(app.getEmail())
                 .orElseGet(() -> {
                     User u = new User();
@@ -197,7 +218,8 @@ public class AccountApplicationServiceImpl
         Account account = new Account();
         account.setAccountNumber(accountNumber);
         account.setBalance(BigDecimal.ZERO);
-        account.setStatus(AccountStatus.ACTIVE);
+        account.setAccountType(app.getAccountType()); 
+        account.setStatus(AccountStatus.PARTIAL_KYC_PENDING); 
         account.setOpenedAt(LocalDateTime.now());
         account.setUser(user);
         account.setBranch(app.getBranch());
@@ -241,8 +263,13 @@ public class AccountApplicationServiceImpl
         if (app.getStatus() != ApplicationStatus.SUBMITTED)
             throw new RuntimeException("Application already processed");
 
-        if (!admin.getBranch().getId().equals(app.getBranch().getId()))
-            throw new RuntimeException("Unauthorized branch access");
+        // Admin can only reject applications from their own branch
+        // Manager can reject applications from any branch
+        if (admin.getRole().getRoleName() == AppRole.ROLE_ADMIN) {
+            if (!admin.getBranch().getId().equals(app.getBranch().getId())) {
+                throw new RuntimeException("Unauthorized branch access");
+            }
+        }
 
         app.setStatus(ApplicationStatus.REJECTED);
         app.setRejectionReason(reason);
@@ -270,17 +297,26 @@ public class AccountApplicationServiceImpl
         User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (user.getRole().getRoleName() != AppRole.ROLE_ADMIN)
+        if (user.getRole().getRoleName() != AppRole.ROLE_ADMIN && user.getRole().getRoleName() != AppRole.ROLE_MANAGER)
             throw new RuntimeException("Admin access required");
 
         return user;
     }
 
-    private AccountApplicationResponseDto toDto(AccountApplication a) {
+
+    public AccountApplicationResponseDto toDto(AccountApplication a) {
         return new AccountApplicationResponseDto(
                 a.getId(),
                 a.getFullName(),
                 a.getEmail(),
+                a.getMobile(),
+                a.getAadhaar(),
+                a.getPan(),
+                a.getAddress(),
+                a.getAccountType(),
+                a.getProfileImagePath(),
+                a.getAadhaarImagePath(),
+                a.getPanImagePath(),
                 a.getStatus(),
                 a.getAppliedAt(),
                 a.getDecisionAt());
@@ -299,5 +335,77 @@ public class AccountApplicationServiceImpl
                 .stream()
                 .map(this::toDto)
                 .toList();
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<AccountApplicationResponseDto> pendingForBranch(Long branchId) {
+
+        return appRepo
+                .findByBranch_IdAndStatus(
+                        branchId,
+                        ApplicationStatus.SUBMITTED)
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    @Override
+    public AccountApplicationResponseDto getApplicationById(Long id) {
+        User currentUser = getCurrentAdmin();
+        
+        AccountApplication app = appRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+        
+        // Admin can only access applications from their own branch
+        // Manager can access all applications
+        if (currentUser.getRole().getRoleName() == AppRole.ROLE_ADMIN) {
+            if (!currentUser.getBranch().getId().equals(app.getBranch().getId())) {
+                throw new RuntimeException("Unauthorized access to this application");
+            }
+        }
+        
+        return toDto(app);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public List<AccountApplicationResponseDto> getAllApplicationsForManager() {
+
+        User currentUser = getCurrentAdmin();
+
+        // Manager → All branches
+        if (currentUser.getRole().getRoleName() == AppRole.ROLE_MANAGER) {
+
+            return appRepo.findAll(
+                    Sort.by(Sort.Direction.DESC, "appliedAt")
+            )
+            .stream()
+            .map(this::toDto)
+            .collect(Collectors.toList());
+
+        } 
+        // Admin → Own branch only
+        else {
+
+            return appRepo
+                    .findByBranch_IdOrderByAppliedAtDesc(
+                            currentUser.getBranch().getId()
+                    )
+                    .stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+        }
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AccountApplicationResponseDto> getAllApplicationsForBranch(Long branchId) {
+
+        return appRepo
+                .findByBranch_IdOrderByAppliedAtDesc(branchId)
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 }

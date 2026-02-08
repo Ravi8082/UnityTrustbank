@@ -31,6 +31,12 @@ public interface AccountRepo extends JpaRepository<Account, Long> {
 	@Query("SELECT a FROM Account a WHERE a.user.id = :userId AND a.status = 'ACTIVE'")
 	Optional<Account> findPrimaryAccountByUserIdForUpdate(@Param("userId") Long userId);
 
+	List<Account> findByStatus(AccountStatus active);
+
+	Long countByBranch_IdIsNotNull();
+
+
+
 
 
 }

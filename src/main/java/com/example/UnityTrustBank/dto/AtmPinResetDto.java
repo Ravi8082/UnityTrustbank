@@ -8,7 +8,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AtmPinResetDto {
-    private Long cardId;
+
+    private Long accountId;   // instead of cardId
     private String oldPin;
     private String newPin;
 }

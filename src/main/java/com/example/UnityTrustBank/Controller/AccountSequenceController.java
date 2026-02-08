@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.*;
 import com.example.UnityTrustBank.Service.AccountSequenceService;
 
 @RestController
-@CrossOrigin("http://localhost:5175/")
 @RequestMapping("/sequence")
 @PreAuthorize("hasAuthority('ROLE_ADMIN')")
 public class AccountSequenceController {

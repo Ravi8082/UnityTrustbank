@@ -15,4 +15,6 @@ public interface BranchService {
     List<BranchResponseDto> getAllBranches();
 
     void deactivateBranch(Long id);
+    void migrateBranch(Long sourceBranchId, Long targetBranchId);
+    List<BranchResponseDto> getActiveBranches();
 }

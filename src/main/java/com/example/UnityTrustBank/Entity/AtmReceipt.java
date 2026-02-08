@@ -3,6 +3,8 @@ package com.example.UnityTrustBank.Entity;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -11,7 +13,6 @@ import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 @Entity
 @Data
 @AllArgsConstructor
@@ -23,11 +24,16 @@ public class AtmReceipt {
     private Long id;
 
     private String receiptNo;
+
     private String atmId;
+
     private String branchCode;
+
     private BigDecimal amount;
+
     private LocalDateTime time;
 
     @ManyToOne
+    @JsonIgnore   // 🔥 VERY IMPORTANT
     private Account account;
 }

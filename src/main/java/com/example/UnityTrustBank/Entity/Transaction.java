@@ -61,4 +61,21 @@ public class Transaction {
     protected void onCreate() {
         this.transactionTime = LocalDateTime.now();
     }
+    
+    // Helper methods for backward compatibility
+    public void setDescription(String description) {
+        this.remark = description;
+    }
+    
+    public String getDescription() {
+        return this.remark;
+    }
+    
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.transactionTime = timestamp;
+    }
+    
+    public LocalDateTime getTimestamp() {
+        return this.transactionTime;
+    }
 }
