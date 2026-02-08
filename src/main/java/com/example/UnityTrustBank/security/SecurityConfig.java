@@ -4,20 +4,18 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.*;
-import org.springframework.security.authentication.*;
-
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.*;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
 
 @Configuration
 @EnableMethodSecurity
@@ -27,28 +25,26 @@ public class SecurityConfig {
     private JwtFilter jwtFilter;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http)
-            throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(sm ->
-                sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/health").permitAll()
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**",
-                        "/account-applications/apply",
-                        "/account-applications/{id}/upload-kyc",
-                        "/api/public/**",
-                        "/branches/public/**").permitAll()  
+                .requestMatchers("/health").permitAll() // ✅ Koyeb health check
+
+                .requestMatchers(
+                    "/auth/**",
+                    "/account-applications/apply",
+                    "/account-applications/{id}/upload-kyc",
+                    "/api/public/**",
+                    "/branches/public/**"
+                ).permitAll()
+
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(
-                jwtFilter,
-                UsernamePasswordAuthenticationFilter.class
-            );
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -59,12 +55,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config)
-            throws Exception {
-
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
+
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
@@ -73,6 +67,7 @@ public class SecurityConfig {
             "http://localhost:5174",
             "http://localhost:8081",
             "http://localhost:3001"
+            // (optional) add your koyeb frontend domain later
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
