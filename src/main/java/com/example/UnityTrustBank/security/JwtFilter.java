@@ -3,15 +3,17 @@ package com.example.UnityTrustBank.security;
 import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.*;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import jakarta.servlet.*;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
@@ -23,20 +25,23 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-
         String path = request.getServletPath();
 
- 
-        return path.startsWith("/auth/**")
-            || path.startsWith("/account-applications/apply");
+        // ✅ health check should be public for Koyeb
+        if ("/health".equals(path)) return true;
+
+        // ✅ Public endpoints (use real prefix checks; no ** here)
+        return path.startsWith("/auth/")
+            || path.equals("/account-applications/apply")
+            || path.startsWith("/api/public/")
+            || path.startsWith("/branches/public/");
     }
 
     @Override
     protected void doFilterInternal(
             HttpServletRequest req,
             HttpServletResponse res,
-            FilterChain chain)
-            throws ServletException, IOException {
+            FilterChain chain) throws ServletException, IOException {
 
         String header = req.getHeader("Authorization");
 
@@ -49,8 +54,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 String email = jwtUtil.extractEmail(token);
 
-                var userDetails =
-                        userDetailsService.loadUserByUsername(email);
+                var userDetails = userDetailsService.loadUserByUsername(email);
 
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
@@ -58,13 +62,9 @@ public class JwtFilter extends OncePerRequestFilter {
                                 null,
                                 userDetails.getAuthorities());
 
-                auth.setDetails(
-                        new WebAuthenticationDetailsSource()
-                                .buildDetails(req));
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
 
-                SecurityContextHolder
-                        .getContext()
-                        .setAuthentication(auth);
+                SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }
 
