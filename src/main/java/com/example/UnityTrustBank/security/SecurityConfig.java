@@ -1,3 +1,4 @@
+// SecurityConfig.java
 package com.example.UnityTrustBank.security;
 
 import java.util.List;
@@ -11,8 +12,10 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -36,10 +39,16 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ public pages
+                // ✅ ABSOLUTE MUST for Koyeb health checks
+                .requestMatchers("/health").permitAll()
+
+                // ✅ allow root + common public pages
                 .requestMatchers("/", "/index.html", "/favicon.ico", "/error").permitAll()
 
-                // ✅ allow common static resource locations
+                // ✅ allow actuator (optional)
+                .requestMatchers("/actuator/**").permitAll()
+
+                // ✅ static resources (common)
                 .requestMatchers(
                     "/assets/**",
                     "/static/**",
@@ -49,9 +58,6 @@ public class SecurityConfig {
                     "/js/**",
                     "/images/**"
                 ).permitAll()
-
-                // ✅ allow health + actuator for Koyeb
-                .requestMatchers("/health", "/actuator/**").permitAll()
 
                 // ✅ public APIs
                 .requestMatchers(
