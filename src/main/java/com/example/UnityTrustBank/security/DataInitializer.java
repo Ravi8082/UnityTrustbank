@@ -8,7 +8,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.example.UnityTrustBank.Entity.User;
+import com.example.UnityTrustBank.Entity.Role;
 import com.example.UnityTrustBank.Repository.UserRepo;
+import com.example.UnityTrustBank.Repository.RoleRepo;
 import com.example.UnityTrustBank.Enum.AppRole;
 
 import java.util.Optional;
@@ -20,15 +22,25 @@ public class DataInitializer {
     private UserRepo userRepo;
 
     @Autowired
+    private RoleRepo roleRepo;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @PostConstruct
     public void initAdmin() {
 
+        // 1️⃣ Get ROLE_ADMIN from DB
+        Role adminRole = roleRepo
+                .findByRoleName(AppRole.ROLE_ADMIN)
+                .orElseThrow(() ->
+                        new RuntimeException("ROLE_ADMIN not found in roles table"));
+
+        // 2️⃣ Check admin user
         Optional<User> adminOpt =
                 userRepo.findByEmail("admin@utb.com");
 
-        // ✅ Agar admin nahi mila → create karo
+        // 3️⃣ Create if not exists
         if (adminOpt.isEmpty()) {
 
             User admin = new User();
@@ -38,27 +50,28 @@ public class DataInitializer {
                     passwordEncoder.encode("Admin@123")
             );
 
-            // ✅ ENUM ROLE
-            admin.setRole(AppRole.ROLE_ADMIN);
+            admin.setRole(adminRole);
+            admin.setActive(true);
+            admin.setPasswordResetRequired(false);
 
             userRepo.save(admin);
 
-            System.out.println("DEFAULT ROLE_ADMIN CREATED");
+            System.out.println("DEFAULT ADMIN CREATED");
 
             return;
         }
 
-        // ✅ Agar admin hai → password reset
+        // 4️⃣ Update if exists
         User admin = adminOpt.get();
 
         admin.setPassword(
                 passwordEncoder.encode("Admin@123")
         );
 
-        admin.setRole(AppRole.ROLE_ADMIN); // ensure role
+        admin.setRole(adminRole);
 
         userRepo.save(admin);
 
-        System.out.println("ROLE_ADMIN UPDATED");
+        System.out.println("ADMIN UPDATED");
     }
 }
