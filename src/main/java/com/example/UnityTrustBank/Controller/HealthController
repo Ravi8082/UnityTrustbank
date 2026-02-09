@@ -1,17 +1,20 @@
+// HealthController.java
 package com.example.UnityTrustBank.Controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+
 @RestController
 public class HealthController {
 
-    @GetMapping(value="/health", produces="text/plain")
-    public String health() { 
-return "OK"; 
-}
+    @GetMapping(value = "/health", produces = "text/plain")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("OK");
+    }
 
-    @GetMapping(value="/", produces="text/plain")
-    public String root() {
-return "OK"; 
-}
+    @GetMapping(value = "/", produces = "text/plain")
+    public ResponseEntity<String> root() {
+        return ResponseEntity.ok("OK");
+    }
 }
