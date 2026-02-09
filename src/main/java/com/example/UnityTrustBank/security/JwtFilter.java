@@ -1,6 +1,7 @@
 package com.example.UnityTrustBank.security;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,46 +21,65 @@ public class JwtFilter extends OncePerRequestFilter {
     @Autowired private JwtUtil jwtUtil;
     @Autowired private CustomUserDetailsService userDetailsService;
 
+    // ✅ Fast “startsWith” checks
+    private static final List<String> PUBLIC_PREFIXES = List.of(
+            "/auth/",
+            "/api/public/",
+            "/branches/public/",
+            "/actuator/",
+            "/assets/",
+            "/static/",
+            "/public/",
+            "/webjars/",
+            "/css/",
+            "/js/",
+            "/images/"
+    );
+
+    // ✅ Exact public paths
+    private static final List<String> PUBLIC_EXACT = List.of(
+            "/", "/health", "/index.html", "/favicon.ico", "/error",
+            "/account-applications/apply"
+    );
+
+    // ✅ Static extensions (covers CDNs / unusual folders)
+    private static final List<String> STATIC_EXTENSIONS = List.of(
+            ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
+            ".woff", ".woff2", ".ttf", ".map"
+    );
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
 
-        // ✅ Public basic endpoints
-        if ("/".equals(path) || "/health".equals(path)) return true;
-        if ("/index.html".equals(path) || "/favicon.ico".equals(path) || "/error".equals(path)) return true;
+        if (isExactPublicPath(path)) return true;
+        if (isPublicPrefix(path)) return true;
+        if (isStaticExtension(path)) return true;
 
-        // ✅ Actuator (if you keep it public)
-        if (path.startsWith("/actuator/")) return true;
+        return false;
+    }
 
-        // ✅ Static resources (most common Spring Boot static mappings)
-        if (path.startsWith("/assets/")
-                || path.startsWith("/static/")
-                || path.startsWith("/public/")
-                || path.startsWith("/webjars/")
-                || path.startsWith("/css/")
-                || path.startsWith("/js/")
-                || path.startsWith("/images/")
-                || path.endsWith(".css")
-                || path.endsWith(".js")
-                || path.endsWith(".png")
-                || path.endsWith(".jpg")
-                || path.endsWith(".jpeg")
-                || path.endsWith(".gif")
-                || path.endsWith(".svg")
-                || path.endsWith(".ico")
-                || path.endsWith(".woff")
-                || path.endsWith(".woff2")
-                || path.endsWith(".ttf")
-                || path.endsWith(".map")
-        ) {
-            return true;
+    private boolean isExactPublicPath(String path) {
+        for (String p : PUBLIC_EXACT) {
+            if (p.equals(path)) return true;
         }
+        return false;
+    }
 
-        // ✅ Your public APIs
-        return path.startsWith("/auth/")
-            || path.equals("/account-applications/apply")
-            || path.startsWith("/api/public/")
-            || path.startsWith("/branches/public/");
+    private boolean isPublicPrefix(String path) {
+        for (String prefix : PUBLIC_PREFIXES) {
+            if (path.startsWith(prefix)) return true;
+        }
+        return false;
+    }
+
+    private boolean isStaticExtension(String path) {
+        // If it contains a '.', likely a file. Check extensions.
+        if (path == null || path.isEmpty() || path.indexOf('.') < 0) return false;
+        for (String ext : STATIC_EXTENSIONS) {
+            if (path.endsWith(ext)) return true;
+        }
+        return false;
     }
 
     @Override
@@ -88,9 +108,8 @@ public class JwtFilter extends OncePerRequestFilter {
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
-            } catch (Exception ex) {
-                // ✅ Invalid/expired token => proceed without authentication
-                // (no crash / no forced 401 here)
+            } catch (Exception ignored) {
+                // Invalid/expired token => proceed unauthenticated (no crash)
             }
         }
 
