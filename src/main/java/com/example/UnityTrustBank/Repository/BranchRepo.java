@@ -12,4 +12,5 @@ public interface BranchRepo extends JpaRepository<Branch, Long> {
     boolean existsByIfscCode(String ifscCode);
     boolean existsByAccountPrefix(String accountPrefix);
     List<Branch> findByActiveTrue();
+     Optional<Branch> findByBranchCode(String branchCode);
 }
