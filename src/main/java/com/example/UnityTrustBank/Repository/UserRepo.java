@@ -22,7 +22,7 @@ public interface UserRepo extends JpaRepository<User, Long> {
     long countByBranch_Id(Long branchId);
     Optional<User> findByIdAndBranch_Id(Long id, Long branchId);
 
-	List<User> findByBranch_Id(Long branchId);
+	Optional<User> findByBranch_Id(Long branchId);
 
 	Long countByBranch_IdIsNotNull();
 	@Query("""
