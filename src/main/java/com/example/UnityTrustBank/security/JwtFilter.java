@@ -1,21 +1,17 @@
-// JwtFilter.java
 package com.example.UnityTrustBank.security;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
-
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -25,11 +21,12 @@ public class JwtFilter extends OncePerRequestFilter {
     @Autowired private JwtUtil jwtUtil;
     @Autowired private CustomUserDetailsService userDetailsService;
 
-    private static final List<String> PUBLIC_EXACT = List.of(
-            "/", "/health", "/index.html", "/favicon.ico", "/error"
+    private static final Set<String> PUBLIC_EXACT = Set.of(
+            "/", "/health", "/index.html", "/favicon.ico", "/error",
+            "/account-applications/apply"
     );
 
-    private static final List<String> PUBLIC_PREFIXES = List.of(
+    private static final Set<String> PUBLIC_PREFIXES = Set.of(
             "/actuator/",
             "/auth/",
             "/api/public/",
@@ -43,7 +40,7 @@ public class JwtFilter extends OncePerRequestFilter {
             "/images/"
     );
 
-    private static final List<String> STATIC_EXTENSIONS = List.of(
+    private static final Set<String> STATIC_EXTENSIONS = Set.of(
             ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
             ".woff", ".woff2", ".ttf", ".map"
     );
@@ -53,25 +50,17 @@ public class JwtFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         if (path == null) return false;
 
-        // ✅ exact allow
-        for (String p : PUBLIC_EXACT) {
-            if (p.equals(path)) return true;
-        }
+        if (PUBLIC_EXACT.contains(path)) return true;
 
-        // ✅ prefix allow
         for (String prefix : PUBLIC_PREFIXES) {
             if (path.startsWith(prefix)) return true;
         }
 
-        // ✅ extension allow
-        if (path.indexOf('.') >= 0) {
-            for (String ext : STATIC_EXTENSIONS) {
-                if (path.endsWith(ext)) return true;
-            }
+        int dot = path.lastIndexOf('.');
+        if (dot >= 0) {
+            String ext = path.substring(dot);
+            if (STATIC_EXTENSIONS.contains(ext)) return true;
         }
-
-        // ✅ allow this public endpoint too
-        if ("/account-applications/apply".equals(path)) return true;
 
         return false;
     }
@@ -84,7 +73,6 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String header = req.getHeader("Authorization");
 
-        // No bearer token => continue (Security will enforce auth where needed)
         if (header == null || !header.startsWith("Bearer ")
                 || SecurityContextHolder.getContext().getAuthentication() != null) {
             chain.doFilter(req, res);
@@ -106,7 +94,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         } catch (Exception ignored) {
-            // Invalid/expired token => proceed unauthenticated (no crash)
+            // invalid/expired token => continue unauthenticated
         }
 
         chain.doFilter(req, res);
