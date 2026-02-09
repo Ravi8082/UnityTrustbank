@@ -1,3 +1,4 @@
+
 package com.example.UnityTrustBank.security;
 
 import jakarta.annotation.PostConstruct;
@@ -8,6 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.example.UnityTrustBank.Entity.User;
 import com.example.UnityTrustBank.Repository.UserRepo;
+
+import java.util.Optional;
 
 @Configuration
 public class DataInitializer {
@@ -21,15 +24,35 @@ public class DataInitializer {
     @PostConstruct
     public void fixAdminPasswordOnce() {
 
-        User user = userRepo.findByEmail("admin@utb.com")
-                .orElseThrow(() ->
-                    new RuntimeException("Admin not found"));
+        Optional<User> adminOpt =
+                userRepo.findByEmail("admin@utb.com");
 
-        user.setPassword(
+        // ✅ If admin not found → create one
+        if (adminOpt.isEmpty()) {
+
+            User admin = new User();
+
+            admin.setEmail("admin@utb.com");
+            admin.setPassword(
+                    passwordEncoder.encode("Admin@123")
+            );
+            admin.setRole("ADMIN");
+
+            userRepo.save(admin);
+
+            System.out.println("DEFAULT ADMIN CREATED");
+
+            return;
+        }
+
+        // ✅ If admin exists → reset password
+        User admin = adminOpt.get();
+
+        admin.setPassword(
                 passwordEncoder.encode("Admin@123")
         );
 
-        userRepo.save(user);
+        userRepo.save(admin);
 
         System.out.println("ADMIN PASSWORD RESET DONE");
     }
