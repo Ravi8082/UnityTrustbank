@@ -13,9 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.*;
 
 @Configuration
 @EnableMethodSecurity
@@ -32,13 +30,14 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                
+
+                // ✅ allow Koyeb health + root + actuator
                 .requestMatchers("/", "/health", "/actuator/**").permitAll()
 
                 .requestMatchers(
                     "/auth/**",
                     "/account-applications/apply",
-                    "/account-applications/{id}/upload-kyc",
+                    "/account-applications/*/upload-kyc",   // ✅ FIXED
                     "/api/public/**",
                     "/branches/public/**"
                 ).permitAll()
@@ -68,9 +67,8 @@ public class SecurityConfig {
             "http://localhost:5174",
             "http://localhost:8081",
             "http://localhost:3001",
-            "https://unitytrustbanks.netlify.app/",
-            "https://unitytrustbankss.netlify.app/"
-            // (optional) add your koyeb frontend domain later
+            "https://unitytrustbanks.netlify.app",
+            "https://unitytrustbankss.netlify.app"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
