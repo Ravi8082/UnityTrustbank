@@ -1,4 +1,3 @@
-// SecurityConfig.java
 package com.example.UnityTrustBank.security;
 
 import java.util.List;
@@ -6,6 +5,8 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import org.springframework.http.HttpMethod;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -39,16 +40,19 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ ABSOLUTE MUST for Koyeb health checks
+                // ✅ allow CORS preflight
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // ✅ Koyeb health checks
                 .requestMatchers("/health").permitAll()
 
-                // ✅ allow root + common public pages
+                // ✅ root + common public pages
                 .requestMatchers("/", "/index.html", "/favicon.ico", "/error").permitAll()
 
-                // ✅ allow actuator (optional)
+                // ✅ actuator (optional)
                 .requestMatchers("/actuator/**").permitAll()
 
-                // ✅ static resources (common)
+                // ✅ static resources
                 .requestMatchers(
                     "/assets/**",
                     "/static/**",
