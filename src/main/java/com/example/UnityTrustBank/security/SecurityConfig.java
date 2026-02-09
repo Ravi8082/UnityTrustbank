@@ -6,19 +6,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -39,16 +35,16 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ allow preflight
+                // allow preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // ✅ allow actuator health (Koyeb should check this)
+                // allow actuator health
                 .requestMatchers("/actuator/**").permitAll()
 
-                // ✅ allow root + basic public pages
+                // public pages
                 .requestMatchers("/", "/health", "/index.html", "/favicon.ico", "/error").permitAll()
 
-                // ✅ static resources
+                // static resources
                 .requestMatchers(
                     "/assets/**",
                     "/static/**",
@@ -59,7 +55,7 @@ public class SecurityConfig {
                     "/images/**"
                 ).permitAll()
 
-                // ✅ public APIs
+                // public APIs
                 .requestMatchers(
                     "/auth/**",
                     "/account-applications/apply",
@@ -86,20 +82,18 @@ public class SecurityConfig {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+
         config.setAllowedOrigins(List.of(
             "http://localhost:3000",
             "http://localhost:5174",
             "http://localhost:8081",
             "http://localhost:3001",
-<<<<<<< HEAD
             "https://unitytrustbanks.netlify.app",
             "https://unitytrustbankss.netlify.app"
-=======
-            "https://unitytrustbanks.netlify.app/"
->>>>>>> 3c628b2 (Update SecurityConfig)
         ));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
