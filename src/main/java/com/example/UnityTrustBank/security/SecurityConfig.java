@@ -6,8 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import org.springframework.boot.autoconfigure.security.servlet.PathRequest; // ✅ ADD
-
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -38,9 +36,19 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ allow static resources + index (fixes 403 on /)
-                .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
+                // ✅ public pages
                 .requestMatchers("/", "/index.html", "/favicon.ico", "/error").permitAll()
+
+                // ✅ allow common static resource locations
+                .requestMatchers(
+                    "/assets/**",
+                    "/static/**",
+                    "/public/**",
+                    "/webjars/**",
+                    "/css/**",
+                    "/js/**",
+                    "/images/**"
+                ).permitAll()
 
                 // ✅ allow health + actuator for Koyeb
                 .requestMatchers("/health", "/actuator/**").permitAll()
@@ -49,7 +57,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/auth/**",
                     "/account-applications/apply",
-                    "/account-applications/*/upload-kyc",   // ✅ FIXED
+                    "/account-applications/*/upload-kyc",
                     "/api/public/**",
                     "/branches/public/**"
                 ).permitAll()
