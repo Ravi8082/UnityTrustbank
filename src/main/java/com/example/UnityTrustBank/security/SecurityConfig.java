@@ -86,13 +86,13 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "http://localhost:5174",
-            "http://localhost:8081",
-            "http://localhost:3001",
-            "https://unitytrustbanks.netlify.app",
-            "https://unitytrustbankss.netlify.app"
-        ));
+    "http://localhost:3000",
+    "http://localhost:5174",
+    "http://localhost:8081",
+    "http://localhost:3001",
+    "https://unitytrustbanks.netlify.app",
+    "https://unitytrustbankss.netlify.app"
+));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
