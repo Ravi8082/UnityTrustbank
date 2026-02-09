@@ -24,10 +24,16 @@ public class JwtFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
 
-        // ✅ public endpoints
+        // ✅ allow root + health + actuator
         if ("/".equals(path) || "/health".equals(path)) return true;
+        if ("/index.html".equals(path) || "/favicon.ico".equals(path) || "/error".equals(path)) return true;
         if (path.startsWith("/actuator/")) return true;
 
+        // ✅ allow common static paths (Spring Boot serves these)
+        if (path.startsWith("/assets/") || path.startsWith("/static/")
+                || path.startsWith("/public/") || path.startsWith("/webjars/")) return true;
+
+        // ✅ allow your public APIs
         return path.startsWith("/auth/")
             || path.equals("/account-applications/apply")
             || path.startsWith("/api/public/")
@@ -47,16 +53,21 @@ public class JwtFilter extends OncePerRequestFilter {
 
             String token = header.substring(7);
 
-            if (jwtUtil.validate(token)) {
-                String email = jwtUtil.extractEmail(token);
-                var userDetails = userDetailsService.loadUserByUsername(email);
+            try {
+                if (jwtUtil.validate(token)) {
+                    String email = jwtUtil.extractEmail(token);
+                    var userDetails = userDetailsService.loadUserByUsername(email);
 
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities());
 
-                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } catch (Exception ex) {
+                // ✅ if token invalid/expired, just continue without auth (no crash)
+                // optionally: res.setStatus(HttpServletResponse.SC_UNAUTHORIZED); return;
             }
         }
 
