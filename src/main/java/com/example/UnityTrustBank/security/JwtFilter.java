@@ -17,20 +17,17 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private CustomUserDetailsService userDetailsService;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private CustomUserDetailsService userDetailsService;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
 
-        // ✅ health check should be public for Koyeb
-        if ("/health".equals(path)) return true;
+        // ✅ public endpoints
+        if ("/".equals(path) || "/health".equals(path)) return true;
+        if (path.startsWith("/actuator/")) return true;
 
-        // ✅ Public endpoints (use real prefix checks; no ** here)
         return path.startsWith("/auth/")
             || path.equals("/account-applications/apply")
             || path.startsWith("/api/public/")
@@ -51,19 +48,14 @@ public class JwtFilter extends OncePerRequestFilter {
             String token = header.substring(7);
 
             if (jwtUtil.validate(token)) {
-
                 String email = jwtUtil.extractEmail(token);
-
                 var userDetails = userDetailsService.loadUserByUsername(email);
 
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities());
+                                userDetails, null, userDetails.getAuthorities());
 
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
-
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }
