@@ -27,6 +27,7 @@ public class JwtFilter extends OncePerRequestFilter {
         // ✅ allow root + health + actuator
         if ("/".equals(path) || "/health".equals(path)) return true;
         if ("/index.html".equals(path) || "/favicon.ico".equals(path) || "/error".equals(path)) return true;
+        if (path.startsWith("/css/") || path.startsWith("/js/") || path.startsWith("/images/")) return true;
         if (path.startsWith("/actuator/")) return true;
 
         // ✅ allow common static paths (Spring Boot serves these)
