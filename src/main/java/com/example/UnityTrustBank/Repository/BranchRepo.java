@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.UnityTrustBank.Entity.Branch;
+import java.util.Optional; 
 
 public interface BranchRepo extends JpaRepository<Branch, Long> {
 
