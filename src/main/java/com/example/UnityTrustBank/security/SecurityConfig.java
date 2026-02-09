@@ -68,7 +68,8 @@ public class SecurityConfig {
             "http://localhost:5174",
             "http://localhost:8081",
             "http://localhost:3001",
-            "https://unitytrustbanks.netlify.app/"
+            "https://unitytrustbanks.netlify.app/",
+            "https://unitytrustbankss.netlify.app/"
             // (optional) add your koyeb frontend domain later
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
