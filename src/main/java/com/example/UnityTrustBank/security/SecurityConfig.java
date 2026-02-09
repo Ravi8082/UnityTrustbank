@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.http.HttpMethod;
 
 import org.springframework.security.authentication.AuthenticationManager;
@@ -40,17 +39,14 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
 
-                // ✅ allow CORS preflight
+                // ✅ allow preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // ✅ Koyeb health checks
-                .requestMatchers("/health").permitAll()
-
-                // ✅ root + common public pages
-                .requestMatchers("/", "/index.html", "/favicon.ico", "/error").permitAll()
-
-                // ✅ actuator (optional)
+                // ✅ allow actuator health (Koyeb should check this)
                 .requestMatchers("/actuator/**").permitAll()
+
+                // ✅ allow root + basic public pages
+                .requestMatchers("/", "/health", "/index.html", "/favicon.ico", "/error").permitAll()
 
                 // ✅ static resources
                 .requestMatchers(
