@@ -56,3 +56,4 @@ public class DataInitializer {
         System.out.println("ADMIN PASSWORD RESET DONE");
     }
 }
+
