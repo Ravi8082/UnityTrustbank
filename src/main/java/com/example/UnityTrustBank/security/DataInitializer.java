@@ -1,5 +1,6 @@
-
 package com.example.UnityTrustBank.security;
+
+import java.util.Optional;
 
 import jakarta.annotation.PostConstruct;
 
@@ -17,108 +18,92 @@ import com.example.UnityTrustBank.Repository.BranchRepo;
 
 import com.example.UnityTrustBank.Enum.AppRole;
 
-import java.util.Optional;
-
 @Configuration
 public class DataInitializer {
 
-    @Autowired
-    private UserRepo userRepo;
-
-    @Autowired
-    private RoleRepo roleRepo;
-
-    @Autowired
-    private BranchRepo branchRepo;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    @Autowired private UserRepo userRepo;
+    @Autowired private RoleRepo roleRepo;
+    @Autowired private BranchRepo branchRepo;
+    @Autowired private PasswordEncoder passwordEncoder;
 
     @PostConstruct
     public void init() {
 
-        // ============================
-        // 1️⃣ CREATE BRANCH IF NOT EXISTS
-        // ============================
+        try {
+            // 1) Ensure roles exist (idempotent)
+            Role userRole = ensureRole(AppRole.ROLE_USER);
+            Role adminRole = ensureRole(AppRole.ROLE_ADMIN);
+            Role managerRole = ensureRole(AppRole.ROLE_MANAGER);
 
-        Branch branch = branchRepo
-            .findByBranchCode("KHR001")
-            .orElseGet(() -> {
+            // 2) Ensure default branch exists (idempotent)
+            Branch branch = ensureBranch();
 
-                Branch b = new Branch();
+            // 3) Ensure admin exists (idempotent, avoids crash)
+            ensureAdmin(adminRole, branch);
 
-                b.setBranchName("Kharihani");
-                b.setBranchCode("KHR001");
-                b.setIfscCode("UTB0001KHR");
-                b.setAccountPrefix("KHR");
+            System.out.println("✅ DATA INITIALIZATION COMPLETED");
+        } catch (Exception e) {
+            // ✅ Never crash the app on startup in cloud
+            System.out.println("⚠️ DataInitializer skipped due to error: " + e.getMessage());
+        }
+    }
 
-                b.setCity("Kharihani");
-                b.setState("Uttar Pradesh");
+    private Role ensureRole(AppRole roleName) {
+        return roleRepo.findByRoleName(roleName).orElseGet(() -> {
+            Role r = new Role();
+            r.setRoleName(roleName);
+            Role saved = roleRepo.save(r);
+            System.out.println("✅ ROLE CREATED: " + roleName);
+            return saved;
+        });
+    }
 
-                b.setActive(true);
+    private Branch ensureBranch() {
+        return branchRepo.findByBranchCode("KHR001").orElseGet(() -> {
+            Branch b = new Branch();
+            b.setBranchName("Kharihani");
+            b.setBranchCode("KHR001");
+            b.setIfscCode("UTB0001KHR");
+            b.setAccountPrefix("KHR");
+            b.setCity("Kharihani");
+            b.setState("Uttar Pradesh");
+            b.setActive(true);
+            Branch saved = branchRepo.save(b);
+            System.out.println("✅ DEFAULT BRANCH CREATED");
+            return saved;
+        });
+    }
 
-                branchRepo.save(b);
+    private void ensureAdmin(Role adminRole, Branch branch) {
+        String email = "admin@utb.com";
 
-                System.out.println("DEFAULT BRANCH CREATED");
+        Optional<User> adminOpt = userRepo.findByEmail(email);
 
-                return b;
-            });
-
-
-        // ============================
-        // 2️⃣ GET ROLE_ADMIN
-        // ============================
-
-        Role adminRole = roleRepo
-            .findByRoleName(AppRole.ROLE_ADMIN)
-            .orElseThrow(() ->
-                new RuntimeException("ROLE_ADMIN not found in DB"));
-
-
-        // ============================
-        // 3️⃣ CREATE / UPDATE ADMIN
-        // ============================
-
-        Optional<User> adminOpt =
-            userRepo.findByEmail("admin@utb.com");
-
-
-        // ---- Create admin if missing ----
         if (adminOpt.isEmpty()) {
-
             User admin = new User();
+            admin.setEmail(email);
+            admin.setPassword(passwordEncoder.encode("Admin@123"));
 
-            admin.setEmail("admin@utb.com");
-            admin.setPassword(
-                passwordEncoder.encode("Admin@123")
-            );
+            // IMPORTANT: unique mobile constraint? then set a unique mobile too.
+            // admin.setMobile("9000000001");
 
             admin.setRole(adminRole);
             admin.setBranch(branch);
-
             admin.setActive(true);
             admin.setPasswordResetRequired(false);
 
             userRepo.save(admin);
-
-            System.out.println("DEFAULT ADMIN CREATED");
-
+            System.out.println("✅ DEFAULT ADMIN CREATED");
             return;
         }
 
-
-        // ---- Update admin if exists ----
+        // Update existing admin (optional)
         User admin = adminOpt.get();
-
-        admin.setPassword(
-            passwordEncoder.encode("Admin@123")
-        );
-
+        admin.setPassword(passwordEncoder.encode("Admin@123"));
         admin.setRole(adminRole);
         admin.setBranch(branch);
-
         userRepo.save(admin);
 
-        System.out.println("ADMIN UPDATED");
+        System.out.println("✅ ADMIN UPDATED");
     }
 }
