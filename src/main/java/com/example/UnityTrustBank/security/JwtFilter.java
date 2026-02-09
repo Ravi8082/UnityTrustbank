@@ -24,17 +24,38 @@ public class JwtFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
 
-        // ✅ allow root + health + actuator
+        // ✅ Public basic endpoints
         if ("/".equals(path) || "/health".equals(path)) return true;
         if ("/index.html".equals(path) || "/favicon.ico".equals(path) || "/error".equals(path)) return true;
-        if (path.startsWith("/css/") || path.startsWith("/js/") || path.startsWith("/images/")) return true;
+
+        // ✅ Actuator (if you keep it public)
         if (path.startsWith("/actuator/")) return true;
 
-        // ✅ allow common static paths (Spring Boot serves these)
-        if (path.startsWith("/assets/") || path.startsWith("/static/")
-                || path.startsWith("/public/") || path.startsWith("/webjars/")) return true;
+        // ✅ Static resources (most common Spring Boot static mappings)
+        if (path.startsWith("/assets/")
+                || path.startsWith("/static/")
+                || path.startsWith("/public/")
+                || path.startsWith("/webjars/")
+                || path.startsWith("/css/")
+                || path.startsWith("/js/")
+                || path.startsWith("/images/")
+                || path.endsWith(".css")
+                || path.endsWith(".js")
+                || path.endsWith(".png")
+                || path.endsWith(".jpg")
+                || path.endsWith(".jpeg")
+                || path.endsWith(".gif")
+                || path.endsWith(".svg")
+                || path.endsWith(".ico")
+                || path.endsWith(".woff")
+                || path.endsWith(".woff2")
+                || path.endsWith(".ttf")
+                || path.endsWith(".map")
+        ) {
+            return true;
+        }
 
-        // ✅ allow your public APIs
+        // ✅ Your public APIs
         return path.startsWith("/auth/")
             || path.equals("/account-applications/apply")
             || path.startsWith("/api/public/")
@@ -49,7 +70,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String header = req.getHeader("Authorization");
 
-        if (header != null && header.startsWith("Bearer ")
+        if (header != null
+                && header.startsWith("Bearer ")
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
 
             String token = header.substring(7);
@@ -67,8 +89,8 @@ public class JwtFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             } catch (Exception ex) {
-                // ✅ if token invalid/expired, just continue without auth (no crash)
-                // optionally: res.setStatus(HttpServletResponse.SC_UNAUTHORIZED); return;
+                // ✅ Invalid/expired token => proceed without authentication
+                // (no crash / no forced 401 here)
             }
         }
 
