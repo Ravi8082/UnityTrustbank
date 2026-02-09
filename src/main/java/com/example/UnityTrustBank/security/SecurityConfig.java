@@ -93,8 +93,12 @@ public class SecurityConfig {
             "http://localhost:5174",
             "http://localhost:8081",
             "http://localhost:3001",
+<<<<<<< HEAD
             "https://unitytrustbanks.netlify.app",
             "https://unitytrustbankss.netlify.app"
+=======
+            "https://unitytrustbanks.netlify.app/"
+>>>>>>> 3c628b2 (Update SecurityConfig)
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
