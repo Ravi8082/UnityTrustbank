@@ -1,3 +1,4 @@
+
 package com.example.UnityTrustBank.security;
 
 import jakarta.annotation.PostConstruct;
@@ -8,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.example.UnityTrustBank.Entity.User;
 import com.example.UnityTrustBank.Repository.UserRepo;
+import com.example.UnityTrustBank.Enum.AppRole;
 
 import java.util.Optional;
 
@@ -21,12 +23,12 @@ public class DataInitializer {
     private PasswordEncoder passwordEncoder;
 
     @PostConstruct
-    public void fixAdminPasswordOnce() {
+    public void initAdmin() {
 
         Optional<User> adminOpt =
                 userRepo.findByEmail("admin@utb.com");
 
-        // If admin not found → create one
+        // ✅ Agar admin nahi mila → create karo
         if (adminOpt.isEmpty()) {
 
             User admin = new User();
@@ -35,25 +37,28 @@ public class DataInitializer {
             admin.setPassword(
                     passwordEncoder.encode("Admin@123")
             );
-            admin.setRole("ADMIN");
+
+            // ✅ ENUM ROLE
+            admin.setRole(AppRole.ROLE_ADMIN);
 
             userRepo.save(admin);
 
-            System.out.println("DEFAULT ADMIN CREATED");
+            System.out.println("DEFAULT ROLE_ADMIN CREATED");
 
             return;
         }
 
-        // If admin exists → reset password
+        // ✅ Agar admin hai → password reset
         User admin = adminOpt.get();
 
         admin.setPassword(
                 passwordEncoder.encode("Admin@123")
         );
 
+        admin.setRole(AppRole.ROLE_ADMIN); // ensure role
+
         userRepo.save(admin);
 
-        System.out.println("ADMIN PASSWORD RESET DONE");
+        System.out.println("ROLE_ADMIN UPDATED");
     }
 }
-
