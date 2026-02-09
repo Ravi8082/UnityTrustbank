@@ -1,4 +1,3 @@
-
 package com.example.UnityTrustBank.security;
 
 import jakarta.annotation.PostConstruct;
@@ -27,7 +26,7 @@ public class DataInitializer {
         Optional<User> adminOpt =
                 userRepo.findByEmail("admin@utb.com");
 
-        // ✅ If admin not found → create one
+        // If admin not found → create one
         if (adminOpt.isEmpty()) {
 
             User admin = new User();
@@ -45,7 +44,7 @@ public class DataInitializer {
             return;
         }
 
-        // ✅ If admin exists → reset password
+        // If admin exists → reset password
         User admin = adminOpt.get();
 
         admin.setPassword(
