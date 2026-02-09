@@ -1,11 +1,14 @@
-// RoleInitializer.java  (FULL corrected)
 package com.example.UnityTrustBank.config;
 
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +21,10 @@ import com.example.UnityTrustBank.Repository.RoleRepo;
 import com.example.UnityTrustBank.Repository.UserRepo;
 
 @Component
+@Profile("init") // ✅ runs ONLY when SPRING_PROFILES_ACTIVE=init
 public class RoleInitializer implements ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(RoleInitializer.class);
 
     @Autowired private UserRepo userRepo;
     @Autowired private RoleRepo roleRepo;
@@ -33,19 +39,22 @@ public class RoleInitializer implements ApplicationRunner {
             initRole(AppRole.ROLE_ADMIN);
             initRole(AppRole.ROLE_MANAGER);
 
-            // ✅ 2) Default branch init (idempotent)
-            Branch defaultBranch = initDefaultBranch();
+            // ✅ 2) Default branch init (idempotent) - use branchCode, not ID
+            Branch defaultBranch = initDefaultBranchByCode("MB001");
 
             // ✅ 3) Manager init (idempotent: checks email OR mobile)
             initManager(defaultBranch);
 
-            // ✅ 4) Admin password update (OPTIONAL) — safer: only update if user exists
-            updateAdminPasswordIfPresent();
+            // ✅ 4) Admin password update (OPTIONAL) — safer: do NOT reset every start
+            // updateAdminPasswordIfPresent(); // 🔒 Recommended to keep OFF in production
 
-            System.out.println("ROLES AND MANAGER INITIALIZATION COMPLETED");
+            log.info("✅ ROLES AND MANAGER INITIALIZATION COMPLETED");
         } catch (Exception e) {
-            System.err.println("Error during initialization: " + e.getMessage());
-            e.printStackTrace();
+            // ✅ Don't swallow: log full stack so you can debug.
+            log.error("❌ Error during initialization", e);
+            // ✅ Do NOT exit/crash the whole service in production:
+            // If you want fail-fast during init profile, you can uncomment:
+            // throw e;
         }
     }
 
@@ -54,34 +63,41 @@ public class RoleInitializer implements ApplicationRunner {
             roleRepo.findByRoleName(roleName).orElseGet(() -> {
                 Role r = new Role();
                 r.setRoleName(roleName);
-                return roleRepo.save(r);
+                Role saved = roleRepo.save(r);
+                log.info("✅ Created role: {}", roleName);
+                return saved;
             });
         } catch (Exception e) {
-            System.out.println("Could not initialize role " + roleName + ": " + e.getMessage());
+            log.error("❌ Could not initialize role {}: {}", roleName, e.getMessage(), e);
         }
     }
 
-    private Branch initDefaultBranch() {
-        // If your BranchRepo has findById(1L) approach, keep it.
-        // But DON'T setId(1L) when creating; let DB generate it.
+    private Branch initDefaultBranchByCode(String branchCode) {
         try {
-            Optional<Branch> existing = branchRepo.findById(1L);
-            if (existing.isPresent()) return existing.get();
+            // ✅ Preferred: find by branchCode (stable + idempotent)
+            Optional<Branch> existing = branchRepo.findByBranchCode(branchCode);
+            if (existing.isPresent()) {
+                log.info("ℹ️ Default branch already exists: {}", branchCode);
+                return existing.get();
+            }
 
             Branch b = new Branch();
             b.setBranchName("Main Branch");
-            b.setBranchCode("MB001");
+            b.setBranchCode(branchCode);
             b.setIfscCode("UTBI0000001");
-            b.setAccountPrefix("MB001");
+            b.setAccountPrefix(branchCode);
             b.setCity("Default City");
             b.setState("Default State");
             b.setActive(true);
 
-            return branchRepo.save(b);
+            Branch saved = branchRepo.save(b);
+            log.info("✅ Created default branch: {}", branchCode);
+            return saved;
+
         } catch (Exception e) {
-            // If findById(1L) is not reliable for your schema, you can switch to findByBranchCode("MB001")
-            // but I’m keeping your approach.
-            throw new RuntimeException("Could not initialize default branch: " + e.getMessage(), e);
+            log.error("❌ Could not initialize default branch {}: {}", branchCode, e.getMessage(), e);
+            // Return a safe fallback by throwing (init profile only) or handle as needed
+            throw new RuntimeException("Default branch init failed: " + e.getMessage(), e);
         }
     }
 
@@ -94,7 +110,7 @@ public class RoleInitializer implements ApplicationRunner {
             boolean exists = userRepo.existsByEmail(managerEmail) || userRepo.existsByMobile(managerMobile);
 
             if (exists) {
-                System.out.println("ℹ️ Manager already exists (email/mobile). Skipping create.");
+                log.info("ℹ️ Manager already exists (email/mobile). Skipping create.");
                 return;
             }
 
@@ -110,21 +126,24 @@ public class RoleInitializer implements ApplicationRunner {
             manager.setBranch(defaultBranch);
 
             userRepo.save(manager);
-            System.out.println("✅ Manager created successfully.");
+            log.info("✅ Manager created successfully.");
+
         } catch (Exception e) {
-            System.out.println("Could not initialize manager: " + e.getMessage());
+            log.error("❌ Could not initialize manager: {}", e.getMessage(), e);
         }
     }
 
+    @SuppressWarnings("unused")
     private void updateAdminPasswordIfPresent() {
         try {
             userRepo.findByEmail("admin@utb.com")
                     .ifPresent(user -> {
                         user.setPassword(passwordEncoder.encode("Admin@123"));
                         userRepo.save(user);
+                        log.info("✅ Updated admin password.");
                     });
         } catch (Exception e) {
-            System.out.println("Could not update admin password: " + e.getMessage());
+            log.error("❌ Could not update admin password: {}", e.getMessage(), e);
         }
     }
 }
