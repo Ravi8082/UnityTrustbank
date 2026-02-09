@@ -9,8 +9,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.example.UnityTrustBank.Entity.User;
 import com.example.UnityTrustBank.Entity.Role;
+import com.example.UnityTrustBank.Entity.Branch;
+
 import com.example.UnityTrustBank.Repository.UserRepo;
 import com.example.UnityTrustBank.Repository.RoleRepo;
+import com.example.UnityTrustBank.Repository.BranchRepo;
+
 import com.example.UnityTrustBank.Enum.AppRole;
 
 import java.util.Optional;
@@ -25,32 +29,73 @@ public class DataInitializer {
     private RoleRepo roleRepo;
 
     @Autowired
+    private BranchRepo branchRepo;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @PostConstruct
-    public void initAdmin() {
+    public void init() {
 
-        // 1️⃣ Get ROLE_ADMIN from DB
+        // ============================
+        // 1️⃣ CREATE BRANCH IF NOT EXISTS
+        // ============================
+
+        Branch branch = branchRepo
+            .findByBranchCode("KHR001")
+            .orElseGet(() -> {
+
+                Branch b = new Branch();
+
+                b.setBranchName("Kharihani");
+                b.setBranchCode("KHR001");
+                b.setIfscCode("UTB0001KHR");
+                b.setAccountPrefix("KHR");
+
+                b.setCity("Kharihani");
+                b.setState("Uttar Pradesh");
+
+                b.setActive(true);
+
+                branchRepo.save(b);
+
+                System.out.println("DEFAULT BRANCH CREATED");
+
+                return b;
+            });
+
+
+        // ============================
+        // 2️⃣ GET ROLE_ADMIN
+        // ============================
+
         Role adminRole = roleRepo
-                .findByRoleName(AppRole.ROLE_ADMIN)
-                .orElseThrow(() ->
-                        new RuntimeException("ROLE_ADMIN not found in roles table"));
+            .findByRoleName(AppRole.ROLE_ADMIN)
+            .orElseThrow(() ->
+                new RuntimeException("ROLE_ADMIN not found in DB"));
 
-        // 2️⃣ Check admin user
+
+        // ============================
+        // 3️⃣ CREATE / UPDATE ADMIN
+        // ============================
+
         Optional<User> adminOpt =
-                userRepo.findByEmail("admin@utb.com");
+            userRepo.findByEmail("admin@utb.com");
 
-        // 3️⃣ Create if not exists
+
+        // ---- Create admin if missing ----
         if (adminOpt.isEmpty()) {
 
             User admin = new User();
 
             admin.setEmail("admin@utb.com");
             admin.setPassword(
-                    passwordEncoder.encode("Admin@123")
+                passwordEncoder.encode("Admin@123")
             );
 
             admin.setRole(adminRole);
+            admin.setBranch(branch);
+
             admin.setActive(true);
             admin.setPasswordResetRequired(false);
 
@@ -61,14 +106,16 @@ public class DataInitializer {
             return;
         }
 
-        // 4️⃣ Update if exists
+
+        // ---- Update admin if exists ----
         User admin = adminOpt.get();
 
         admin.setPassword(
-                passwordEncoder.encode("Admin@123")
+            passwordEncoder.encode("Admin@123")
         );
 
         admin.setRole(adminRole);
+        admin.setBranch(branch);
 
         userRepo.save(admin);
 
