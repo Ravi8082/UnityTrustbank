@@ -1,17 +1,21 @@
+// JwtFilter.java
 package com.example.UnityTrustBank.security;
 
 import java.io.IOException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -21,12 +25,15 @@ public class JwtFilter extends OncePerRequestFilter {
     @Autowired private JwtUtil jwtUtil;
     @Autowired private CustomUserDetailsService userDetailsService;
 
-    // ✅ Fast “startsWith” checks
+    private static final List<String> PUBLIC_EXACT = List.of(
+            "/", "/health", "/index.html", "/favicon.ico", "/error"
+    );
+
     private static final List<String> PUBLIC_PREFIXES = List.of(
+            "/actuator/",
             "/auth/",
             "/api/public/",
             "/branches/public/",
-            "/actuator/",
             "/assets/",
             "/static/",
             "/public/",
@@ -36,13 +43,6 @@ public class JwtFilter extends OncePerRequestFilter {
             "/images/"
     );
 
-    // ✅ Exact public paths
-    private static final List<String> PUBLIC_EXACT = List.of(
-            "/", "/health", "/index.html", "/favicon.ico", "/error",
-            "/account-applications/apply"
-    );
-
-    // ✅ Static extensions (covers CDNs / unusual folders)
     private static final List<String> STATIC_EXTENSIONS = List.of(
             ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
             ".woff", ".woff2", ".ttf", ".map"
@@ -51,34 +51,28 @@ public class JwtFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
+        if (path == null) return false;
 
-        if (isExactPublicPath(path)) return true;
-        if (isPublicPrefix(path)) return true;
-        if (isStaticExtension(path)) return true;
-
-        return false;
-    }
-
-    private boolean isExactPublicPath(String path) {
+        // ✅ exact allow
         for (String p : PUBLIC_EXACT) {
             if (p.equals(path)) return true;
         }
-        return false;
-    }
 
-    private boolean isPublicPrefix(String path) {
+        // ✅ prefix allow
         for (String prefix : PUBLIC_PREFIXES) {
             if (path.startsWith(prefix)) return true;
         }
-        return false;
-    }
 
-    private boolean isStaticExtension(String path) {
-        // If it contains a '.', likely a file. Check extensions.
-        if (path == null || path.isEmpty() || path.indexOf('.') < 0) return false;
-        for (String ext : STATIC_EXTENSIONS) {
-            if (path.endsWith(ext)) return true;
+        // ✅ extension allow
+        if (path.indexOf('.') >= 0) {
+            for (String ext : STATIC_EXTENSIONS) {
+                if (path.endsWith(ext)) return true;
+            }
         }
+
+        // ✅ allow this public endpoint too
+        if ("/account-applications/apply".equals(path)) return true;
+
         return false;
     }
 
@@ -90,27 +84,29 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String header = req.getHeader("Authorization");
 
-        if (header != null
-                && header.startsWith("Bearer ")
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
+        // No bearer token => continue (Security will enforce auth where needed)
+        if (header == null || !header.startsWith("Bearer ")
+                || SecurityContextHolder.getContext().getAuthentication() != null) {
+            chain.doFilter(req, res);
+            return;
+        }
 
-            String token = header.substring(7);
+        String token = header.substring(7);
 
-            try {
-                if (jwtUtil.validate(token)) {
-                    String email = jwtUtil.extractEmail(token);
-                    var userDetails = userDetailsService.loadUserByUsername(email);
+        try {
+            if (jwtUtil.validate(token)) {
+                String email = jwtUtil.extractEmail(token);
+                var userDetails = userDetailsService.loadUserByUsername(email);
 
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities());
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
 
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
-            } catch (Exception ignored) {
-                // Invalid/expired token => proceed unauthenticated (no crash)
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+                SecurityContextHolder.getContext().setAuthentication(auth);
             }
+        } catch (Exception ignored) {
+            // Invalid/expired token => proceed unauthenticated (no crash)
         }
 
         chain.doFilter(req, res);
