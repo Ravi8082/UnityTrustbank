@@ -1,3 +1,4 @@
+
 package com.example.UnityTrustBank.ServiceImple;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,10 +13,13 @@ public class EmailService {
     private JavaMailSender sender;
 
     public void send(String to, String subject, String body) {
+
         SimpleMailMessage mail = new SimpleMailMessage();
+
         mail.setTo(to);
         mail.setSubject(subject);
         mail.setText(body);
-        sender.send(mail);
+
+        sender.send(mail); // ✅ Correct line
     }
 }
